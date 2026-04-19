@@ -1,0 +1,38 @@
+{
+  "app": {
+    "title": "3D Printing Brokerage",
+    "description": "Generate 3D models with AI and get them printed"
+  },
+  "prompt": {
+    "title": "AI 3D Model Generation",
+    "placeholder": "Describe the 3D model you want... (e.g., a cute cat figurine)",
+    "submit": "Generate",
+    "generating": "Generating model..."
+  },
+  "viewer": {
+    "title": "3D Model Viewer",
+    "loading": "Loading model...",
+    "processing": "AI is generating your model...",
+    "ready": "Your model is ready!",
+    "error": "Failed to load model",
+    "download": "Download STL",
+    "requestPrint": "Request 3D Print Quote"
+  },
+  "auth": {
+    "login": "Log In",
+    "signup": "Sign Up",
+    "logout": "Log Out",
+    "email": "Email",
+    "password": "Password",
+    "loginTitle": "Log In",
+    "signupTitle": "Sign Up",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?",
+    "loginError": "Login failed",
+    "signupError": "Sign up failed"
+  },
+  "nav": {
+    "home": "Home",
+    "myModels": "My Models"
+  }
+}

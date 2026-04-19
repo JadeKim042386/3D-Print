@@ -1,0 +1,38 @@
+{
+  "app": {
+    "title": "3D 프린팅 브로커리지",
+    "description": "AI로 3D 모델을 생성하고 프린팅까지 한 번에"
+  },
+  "prompt": {
+    "title": "AI 3D 모델 생성",
+    "placeholder": "원하는 3D 모델을 설명해주세요... (예: 귀여운 고양이 피규어)",
+    "submit": "생성하기",
+    "generating": "모델 생성 중..."
+  },
+  "viewer": {
+    "title": "3D 모델 뷰어",
+    "loading": "모델 불러오는 중...",
+    "processing": "AI가 모델을 생성하고 있습니다...",
+    "ready": "모델이 준비되었습니다!",
+    "error": "모델을 불러올 수 없습니다",
+    "download": "STL 다운로드",
+    "requestPrint": "3D 프린팅 견적 요청"
+  },
+  "auth": {
+    "login": "로그인",
+    "signup": "회원가입",
+    "logout": "로그아웃",
+    "email": "이메일",
+    "password": "비밀번호",
+    "loginTitle": "로그인",
+    "signupTitle": "회원가입",
+    "noAccount": "계정이 없으신가요?",
+    "hasAccount": "이미 계정이 있으신가요?",
+    "loginError": "로그인에 실패했습니다",
+    "signupError": "회원가입에 실패했습니다"
+  },
+  "nav": {
+    "home": "홈",
+    "myModels": "내 모델"
+  }
+}
