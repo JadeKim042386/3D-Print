@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, consentedProcedure } from "../trpc/trpc.js";
 import type { PaymentProvider } from "../types/payment.js";
 
-export function createPaymentsRouter(paymentProvider: PaymentProvider) {
+export function createPaymentsRouter(paymentProvider: PaymentProvider | null) {
   return router({
     /** Create a payment order — requires PIPA consents */
     createOrder: consentedProcedure
@@ -33,6 +33,9 @@ export function createPaymentsRouter(paymentProvider: PaymentProvider) {
         }
 
         // Create order with payment provider
+        if (!paymentProvider) {
+          throw new TRPCError({ code: "NOT_IMPLEMENTED", message: "Payment provider not configured — prototype mode" });
+        }
         const result = await paymentProvider.createOrder({
           modelId: input.modelId,
           amount: input.amount,
@@ -107,6 +110,9 @@ export function createPaymentsRouter(paymentProvider: PaymentProvider) {
         }
 
         // Confirm with payment provider
+        if (!paymentProvider) {
+          throw new TRPCError({ code: "NOT_IMPLEMENTED", message: "Payment provider not configured — prototype mode" });
+        }
         const result = await paymentProvider.confirmPayment({
           orderId: input.orderId,
           paymentKey: input.paymentKey,
@@ -181,6 +187,9 @@ export function createPaymentsRouter(paymentProvider: PaymentProvider) {
         }
 
         // Cancel with payment provider
+        if (!paymentProvider) {
+          throw new TRPCError({ code: "NOT_IMPLEMENTED", message: "Payment provider not configured — prototype mode" });
+        }
         const result = await paymentProvider.cancelPayment({
           paymentKey: order.payment_key,
           cancelReason: input.cancelReason,

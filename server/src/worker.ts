@@ -3,6 +3,7 @@ import { loadConfig } from "./config.js";
 import { initSentry } from "./lib/sentry.js";
 import { getSupabaseClient } from "./storage/supabase.js";
 import { MeshyProvider } from "./providers/meshy.js";
+import { MockGenerationProvider } from "./providers/mock-generation.js";
 import { createGenerationWorker } from "./queue/generation-worker.js";
 
 async function main() {
@@ -11,7 +12,9 @@ async function main() {
 
   const supabase = getSupabaseClient(config);
   const redis = new IORedis(config.REDIS_URL, { maxRetriesPerRequest: null });
-  const provider = new MeshyProvider(config.MESHY_API_KEY);
+  const provider = config.MESHY_API_KEY
+    ? new MeshyProvider(config.MESHY_API_KEY)
+    : new MockGenerationProvider();
 
   const worker = createGenerationWorker({
     connection: redis,

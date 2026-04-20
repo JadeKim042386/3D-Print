@@ -5,9 +5,18 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { getModel } from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
-import ModelViewer from "@/components/ModelViewer";
+
+const ModelViewer = dynamic(() => import("@/components/ModelViewer"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full aspect-square max-h-[600px] rounded-xl border border-gray-200 bg-gray-50 flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
+    </div>
+  ),
+});
 
 function GenerationProgress() {
   const { t } = useTranslation();

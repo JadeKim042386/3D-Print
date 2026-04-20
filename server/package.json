@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@fastify/cors": "^11.2.0",
     "@sentry/node": "^10.49.0",
     "@supabase/supabase-js": "^2.49.0",
     "@trpc/server": "^11.0.0",

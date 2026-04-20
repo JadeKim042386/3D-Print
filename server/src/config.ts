@@ -5,7 +5,7 @@ const envSchema = z.object({
   SUPABASE_URL: z.string(),
   SUPABASE_SERVICE_KEY: z.string(),
   SUPABASE_ANON_KEY: z.string(),
-  MESHY_API_KEY: z.string(),
+  MESHY_API_KEY: z.string().optional(),
   STORAGE_BUCKET: z.string().default("models"),
   PORT: z.coerce.number().default(3000),
   // Toss Payments (sandbox by default)

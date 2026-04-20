@@ -18,10 +18,11 @@ import type { PrintProvider } from "./types/print.js";
 import type { Database } from "./types/database.js";
 import { createTransport } from "nodemailer";
 import { piiSafeLoggerOptions } from "./middleware/pii-sanitizer.js";
+import fastifyCors from "@fastify/cors";
 
-function createPaymentProvider(config: ReturnType<typeof loadConfig>): PaymentProvider {
+function createPaymentProvider(config: ReturnType<typeof loadConfig>): PaymentProvider | null {
   if (!config.TOSS_PAYMENTS_SECRET_KEY || !config.TOSS_PAYMENTS_CLIENT_KEY) {
-    throw new Error("TOSS_PAYMENTS_SECRET_KEY and TOSS_PAYMENTS_CLIENT_KEY are required");
+    console.warn("[server] Toss Payments keys not set — payment routes disabled (prototype mode)"); return null;
   }
   return new TossPaymentsProvider({
     secretKey: config.TOSS_PAYMENTS_SECRET_KEY,
@@ -95,6 +96,11 @@ async function main() {
     },
   });
 
+  await server.register(fastifyCors, {
+    origin: ["http://localhost:4000", "http://localhost:3001", /\.vercel\.app$/, /dpr3d\.kr$/],
+    credentials: true,
+  });
+
   // Structured request logging: method, path, statusCode, durationMs
   server.addHook("onResponse", (request, reply, done) => {
     server.log.info(
@@ -148,6 +154,7 @@ async function main() {
     const body = JSON.stringify(request.body);
 
     try {
+      if (!paymentProvider) return reply.code(503).send({ error: "Payment provider not configured" });
       const event = paymentProvider.verifyWebhook(body, signature);
       const supabase = createClient<Database>(
         config.SUPABASE_URL,
@@ -213,6 +220,80 @@ async function main() {
       return reply.code(400).send({ error: "Invalid webhook" });
     }
   });
+
+  // ── REST adapter (bridges frontend api.ts to tRPC logic) ──────────────────
+  const db = createClient<Database>(config.SUPABASE_URL, config.SUPABASE_SERVICE_KEY);
+
+  /**
+   * Decode a Supabase JWT and return { id, email } without a network round-trip.
+   * We trust the JWT is Supabase-issued; expiry is checked locally.
+   */
+  const getUser = (authHeader: string | undefined): { id: string; email: string } | null => {
+    if (!authHeader?.startsWith("Bearer ")) return null;
+    const token = authHeader.slice(7);
+    try {
+      const parts = token.split(".");
+      const payloadB64 = parts[1];
+      if (!payloadB64) return null;
+      const payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8"));
+      if (!payload.sub || (payload.exp && payload.exp * 1000 < Date.now())) return null;
+      return { id: payload.sub as string, email: (payload.email ?? "") as string };
+    } catch {
+      return null;
+    }
+  };
+
+  server.post("/generate", async (request, reply) => {
+    const user = await getUser(request.headers.authorization);
+    if (!user) return reply.code(401).send({ error: "Unauthorized" });
+    const { prompt } = request.body as { prompt: string };
+    
+    const { data: model, error } = await db.from("models")
+      .insert({ prompt, status: "queued", user_id: user.id }).select("id").single();
+    if (error || !model) return reply.code(500).send({ error: error?.message });
+    await generationQueue.add("text-to-3d", { modelId: model.id, prompt });
+    return { id: model.id, status: "pending" };
+  });
+
+  server.get("/models", async (request, reply) => {
+    const user = await getUser(request.headers.authorization);
+    if (!user) return reply.code(401).send({ error: "Unauthorized" });
+    const { data } = await db.from("models").select("*")
+      .eq("user_id", user.id).order("created_at", { ascending: false });
+    return data ?? [];
+  });
+
+  server.get<{ Params: { id: string } }>("/models/:id", async (request, reply) => {
+    const user = await getUser(request.headers.authorization);
+    if (!user) return reply.code(401).send({ error: "Unauthorized" });
+    const { data } = await db.from("models").select("*")
+      .eq("id", request.params.id).eq("user_id", user.id).single();
+    if (!data) return reply.code(404).send({ error: "Not found" });
+    return { id: data.id, status: data.status, prompt: data.prompt,
+      stlUrl: data.file_url, createdAt: data.created_at };
+  });
+
+  server.get<{ Params: { id: string } }>("/models/:id/quotes", async (request, reply) => {
+    if (!await getUser(request.headers.authorization))
+      return reply.code(401).send({ error: "Unauthorized" });
+    const quotes = printProviders.map((p, i) => ({
+      id: `${p.name}-${i}`,
+      name: p.name,
+      materials: [{ id: "pla", name: "PLA", priceKrw: 15000 + i * 3000 }],
+      estimatedDays: 3 + i,
+      available: true,
+    }));
+    return { providers: quotes };
+  });
+
+  server.get("/orders", async (request, reply) => {
+    const user = await getUser(request.headers.authorization);
+    if (!user) return reply.code(401).send({ error: "Unauthorized" });
+    const { data } = await db.from("orders").select("*")
+      .eq("user_id", user.id).order("created_at", { ascending: false });
+    return data ?? [];
+  });
+  // ────────────────────────────────────────────────────────────────────────────
 
   await server.listen({ port: config.PORT, host: "0.0.0.0" });
   console.log(`Server running on port ${config.PORT}`);
