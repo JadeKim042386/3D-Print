@@ -66,6 +66,12 @@ export default function Navbar() {
               >
                 {t("nav.dashboard")}
               </Link>
+              <Link
+                href="/admin"
+                className="text-sm text-gray-600 hover:text-gray-900 min-h-[44px] flex items-center px-2"
+              >
+                {t("admin.dashboard")}
+              </Link>
               <button
                 onClick={handleLogout}
                 className="text-sm text-gray-600 hover:text-gray-900 min-h-[44px] px-2"

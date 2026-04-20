@@ -43,3 +43,28 @@ const hasRequiredConsents = t.middleware(async ({ ctx, next }) => {
 
 /** Protected procedure that also verifies required PIPA consents */
 export const consentedProcedure = t.procedure.use(isAuthed).use(hasRequiredConsents);
+
+/** Middleware that requires admin role */
+const isAdmin = t.middleware(async ({ ctx, next }) => {
+  if (!ctx.user) {
+    throw new TRPCError({ code: "UNAUTHORIZED" });
+  }
+
+  const { data: dbUser } = await ctx.supabase
+    .from("users")
+    .select("role")
+    .eq("id", ctx.user.id)
+    .single();
+
+  if (!dbUser || dbUser.role !== "admin") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Admin access required.",
+    });
+  }
+
+  return next({ ctx: { ...ctx, user: ctx.user } });
+});
+
+/** Procedure restricted to admin users */
+export const adminProcedure = t.procedure.use(isAuthed).use(isAdmin);

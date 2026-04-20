@@ -4,6 +4,7 @@ import { consentsRouter } from "./consents.js";
 import { usersRouter } from "./users.js";
 import { generateRouter } from "./generate.js";
 import { dimensionGenerateRouter } from "./dimension-generate.js";
+import { adminRouter } from "./admin.js";
 import type { PaymentProvider } from "../types/payment.js";
 import type { PrintProvider } from "../types/print.js";
 import { createPaymentsRouter } from "./payments.js";
@@ -21,6 +22,7 @@ export function createAppRouter(
     dimensionGenerate: dimensionGenerateRouter,
     payments:         createPaymentsRouter(paymentProvider),
     print:            createPrintRouter(printProviders),
+    admin:            adminRouter,
   });
 }
 
@@ -33,6 +35,7 @@ export const appRouter = router({
   dimensionGenerate: dimensionGenerateRouter,
   payments:         createPaymentsRouter(null as unknown as PaymentProvider),
   print:            createPrintRouter([]),
+  admin:            adminRouter,
 });
 
 export type AppRouter = typeof appRouter;
