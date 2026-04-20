@@ -8,6 +8,7 @@
     "dev": "tsx watch src/server.ts",
     "worker": "tsx src/worker.ts",
     "dimension-worker": "tsx src/dimension-worker.ts",
+    "print-readiness-worker": "tsx src/print-readiness-worker.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"

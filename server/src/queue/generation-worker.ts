@@ -17,12 +17,16 @@ import {
   type GenerationJobData,
   type GenerationJobResult,
 } from "./generation-queue.js";
+import type { Queue } from "bullmq";
+import type { PrintReadinessJobData, PrintReadinessJobResult } from "./print-readiness-queue.js";
 
 export interface GenerationWorkerDeps {
   connection: ConnectionOptions;
   provider: GenerationProvider;
   supabase: SupabaseClient;
   bucket: string;
+  /** Optional: enqueue print-readiness validation after completion */
+  printReadinessQueue?: Queue<PrintReadinessJobData, PrintReadinessJobResult>;
 }
 
 export function createGenerationWorker(
@@ -67,6 +71,18 @@ export function createGenerationWorker(
         format:           result.format,
         generation_type:  "ai",
       }).eq("id", modelId);
+
+      // Enqueue print-readiness validation
+      if (deps.printReadinessQueue && result.format) {
+        const fmt = (result.format === "stl" || result.format === "glb")
+          ? result.format
+          : "glb" as const;
+        await deps.printReadinessQueue.add("validate", {
+          modelId,
+          fileUrl: storageUrl,
+          format: fmt,
+        });
+      }
 
       await job.updateProgress(100);
       return { modelId, storageUrl, providerTaskId };

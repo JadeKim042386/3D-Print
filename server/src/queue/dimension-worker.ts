@@ -30,6 +30,8 @@ import {
   type DimensionJobResult,
 } from "./dimension-queue.js";
 import { analyzeStlQuality, type MeshQualityReport } from "../lib/mesh-quality.js";
+import type { Queue } from "bullmq";
+import type { PrintReadinessJobData, PrintReadinessJobResult } from "./print-readiness-queue.js";
 
 export interface DimensionWorkerDeps {
   connection: ConnectionOptions;
@@ -37,6 +39,8 @@ export interface DimensionWorkerDeps {
   aiProvider: GenerationProvider & ImageGenerationProvider;
   supabase: SupabaseClient;
   bucket: string;
+  /** Optional: enqueue print-readiness validation after completion */
+  printReadinessQueue?: Queue<PrintReadinessJobData, PrintReadinessJobResult>;
 }
 
 export function createDimensionWorker(
@@ -264,6 +268,15 @@ export function createDimensionWorker(
       }
 
       await supabase.from("models").update(updateData).eq("id", modelId);
+
+      // Enqueue print-readiness validation
+      if (deps.printReadinessQueue) {
+        await deps.printReadinessQueue.add("validate", {
+          modelId,
+          fileUrl: storageUrl,
+          format: modelFormat as "stl" | "glb",
+        });
+      }
 
       await job.updateProgress(100);
 

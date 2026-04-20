@@ -32,6 +32,8 @@ export interface ModelResponse {
   isPublic?: boolean;
   createdAt: string;
   meshQuality?: MeshQuality | null;
+  printQualityScore?: number | null;
+  printReady?: boolean | null;
 }
 
 export interface ImageGenerateRequest {

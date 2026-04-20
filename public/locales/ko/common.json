@@ -177,6 +177,14 @@
     "volume": "체적",
     "surfaceArea": "표면적"
   },
+  "printReadiness": {
+    "title": "프린트 적합성",
+    "ready": "프린트 가능",
+    "warning": "프린트 가능 (경고 있음)",
+    "notReady": "프린트 불가",
+    "validating": "검증 중...",
+    "score": "품질 점수"
+  },
   "admin": {
     "title": "관리자 패널",
     "dashboard": "관리자",

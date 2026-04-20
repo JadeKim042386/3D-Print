@@ -18,6 +18,7 @@ import { getSupabaseClient } from "./storage/supabase.js";
 import { MeshyProvider } from "./providers/meshy.js";
 import { MockGenerationProvider } from "./providers/mock-generation.js";
 import { createDimensionWorker } from "./queue/dimension-worker.js";
+import { createPrintReadinessQueue } from "./queue/print-readiness-queue.js";
 
 async function main() {
   const config = loadConfig();
@@ -45,11 +46,14 @@ async function main() {
     ? new MeshyProvider(config.MESHY_API_KEY)
     : new MockGenerationProvider();
 
+  const printReadinessQueue = createPrintReadinessQueue(redis);
+
   const worker = createDimensionWorker({
     connection:  redis,
     aiProvider,
     supabase,
     bucket: config.STORAGE_BUCKET,
+    printReadinessQueue,
   });
 
   console.log(

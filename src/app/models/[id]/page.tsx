@@ -242,6 +242,41 @@ export default function ModelPage() {
             </div>
           )}
 
+          {/* Print readiness badge */}
+          {model.status === "ready" && (
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <h3 className="text-sm font-medium text-gray-700 mb-3">{t("printReadiness.title")}</h3>
+              <div className="flex items-center gap-3">
+                {model.printReady == null && model.printQualityScore == null ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
+                    <span className="h-2 w-2 rounded-full bg-gray-400 animate-pulse" />
+                    {t("printReadiness.validating")}
+                  </span>
+                ) : model.printReady && (model.printQualityScore ?? 0) >= 80 ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">
+                    <span className="h-2 w-2 rounded-full bg-green-500" />
+                    {t("printReadiness.ready")}
+                  </span>
+                ) : model.printReady ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-yellow-100 px-3 py-1 text-xs font-medium text-yellow-700">
+                    <span className="h-2 w-2 rounded-full bg-yellow-500" />
+                    {t("printReadiness.warning")}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-700">
+                    <span className="h-2 w-2 rounded-full bg-red-500" />
+                    {t("printReadiness.notReady")}
+                  </span>
+                )}
+                {model.printQualityScore != null && (
+                  <span className="text-sm text-gray-600">
+                    {t("printReadiness.score")}: {model.printQualityScore}/100
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center justify-between">
             <VisibilityToggle
               modelId={params.id}

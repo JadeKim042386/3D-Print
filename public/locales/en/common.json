@@ -177,6 +177,14 @@
     "volume": "Volume",
     "surfaceArea": "Surface Area"
   },
+  "printReadiness": {
+    "title": "Print Readiness",
+    "ready": "Print Ready",
+    "warning": "Print Ready (with warnings)",
+    "notReady": "Not Print Ready",
+    "validating": "Validating...",
+    "score": "Quality Score"
+  },
   "admin": {
     "title": "Admin Panel",
     "dashboard": "Admin",

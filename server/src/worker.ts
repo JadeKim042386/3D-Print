@@ -5,6 +5,7 @@ import { getSupabaseClient } from "./storage/supabase.js";
 import { MeshyProvider } from "./providers/meshy.js";
 import { MockGenerationProvider } from "./providers/mock-generation.js";
 import { createGenerationWorker } from "./queue/generation-worker.js";
+import { createPrintReadinessQueue } from "./queue/print-readiness-queue.js";
 
 async function main() {
   const config = loadConfig();
@@ -27,11 +28,14 @@ async function main() {
     ? new MeshyProvider(config.MESHY_API_KEY)
     : new MockGenerationProvider();
 
+  const printReadinessQueue = createPrintReadinessQueue(redis);
+
   const worker = createGenerationWorker({
     connection: redis,
     provider,
     supabase,
     bucket: config.STORAGE_BUCKET,
+    printReadinessQueue,
   });
 
   console.log(`Generation worker started (provider: ${provider.name})`);
