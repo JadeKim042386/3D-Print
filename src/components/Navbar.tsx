@@ -44,6 +44,13 @@ export default function Navbar() {
         </Link>
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-4">
+          <Link
+            href="/gallery"
+            className="text-sm text-gray-600 hover:text-gray-900 min-h-[44px] flex items-center px-2"
+          >
+            {t("nav.gallery")}
+          </Link>
+
           <button
             onClick={toggleLocale}
             className="text-sm text-gray-600 hover:text-gray-900 px-2 sm:px-3 py-2 rounded border border-gray-300 min-h-[44px] min-w-[44px] flex items-center justify-center"

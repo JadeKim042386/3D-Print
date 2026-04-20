@@ -44,7 +44,8 @@
     "home": "Home",
     "myModels": "My Models",
     "dashboard": "Dashboard",
-    "orders": "Orders"
+    "orders": "Orders",
+    "gallery": "Gallery"
   },
   "dashboard": {
     "title": "My Dashboard",
@@ -83,7 +84,12 @@
     "loadingProviders": "Loading print provider quotes...",
     "providerUnavailable": "This provider is currently unavailable",
     "days": "days",
-    "businessDays": "business days"
+    "businessDays": " business days",
+    "quantity": "Quantity",
+    "quoteViaEmail": "Email quote",
+    "quoteViaApi": "Instant quote",
+    "quoteType": "Quote Type",
+    "providersFound": " providers found"
   },
   "landing": {
     "hero": "Imagination to Reality, AI 3D Printing",
@@ -111,6 +117,32 @@
     "goHome": "Go Home",
     "notFoundTitle": "Page Not Found",
     "notFoundDescription": "The page you requested does not exist or has been moved."
+  },
+  "share": {
+    "title": "Share",
+    "copyLink": "Copy Link",
+    "copied": "Copied!",
+    "kakaoTalk": "Share on KakaoTalk",
+    "twitter": "Share on X",
+    "embed": "Copy Embed Code",
+    "embedCopied": "Embed code copied!"
+  },
+  "gallery": {
+    "title": "Public Gallery",
+    "subtitle": "Explore amazing 3D models created by other users",
+    "empty": "No public models yet",
+    "emptyDescription": "Be the first to share a model!",
+    "viewModel": "View Model",
+    "createdBy": "Created by",
+    "loadMore": "Load More",
+    "madeWith": "Made with AI"
+  },
+  "visibility": {
+    "public": "Public",
+    "private": "Private",
+    "toggleLabel": "Model visibility",
+    "madePublic": "Model is now public",
+    "madePrivate": "Model is now private"
   },
   "order": {
     "title": "Order Confirmation",

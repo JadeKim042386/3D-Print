@@ -75,8 +75,16 @@ export default function OrderPage() {
     enabled: !!accessToken && !!params.id,
   });
 
-  const provider = quotesData?.providers.find((p) => p.id === providerId);
-  const material = provider?.materials.find((m) => m.id === materialId);
+  const quote = quotesData?.quotes.find(
+    (q) => q.providerName === providerId && q.material === materialId
+  );
+  // Legacy compat: build provider/material shapes for the payment flow
+  const provider = quote
+    ? { id: quote.providerName, name: quote.providerDisplayName, estimatedDays: quote.estimatedDays }
+    : undefined;
+  const material = quote
+    ? { id: quote.material, name: quote.material, priceKrw: quote.priceKrw }
+    : undefined;
 
   const handlePayment = useCallback(async () => {
     if (!accessToken || !provider || !material) return;

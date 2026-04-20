@@ -44,7 +44,8 @@
     "home": "홈",
     "myModels": "내 모델",
     "dashboard": "대시보드",
-    "orders": "주문 내역"
+    "orders": "주문 내역",
+    "gallery": "갤러리"
   },
   "dashboard": {
     "title": "내 대시보드",
@@ -83,7 +84,12 @@
     "loadingProviders": "프린팅 업체 견적을 불러오는 중...",
     "providerUnavailable": "해당 업체를 현재 이용할 수 없습니다",
     "days": "일",
-    "businessDays": "영업일"
+    "businessDays": "영업일",
+    "quantity": "수량",
+    "quoteViaEmail": "이메일 견적",
+    "quoteViaApi": "즉시 견적",
+    "quoteType": "견적 방식",
+    "providersFound": "개 업체 견적"
   },
   "landing": {
     "hero": "상상을 현실로, AI 3D 프린팅",
@@ -111,6 +117,32 @@
     "goHome": "홈으로 돌아가기",
     "notFoundTitle": "페이지를 찾을 수 없습니다",
     "notFoundDescription": "요청하신 페이지가 존재하지 않거나 이동되었습니다."
+  },
+  "share": {
+    "title": "공유하기",
+    "copyLink": "링크 복사",
+    "copied": "복사되었습니다!",
+    "kakaoTalk": "카카오톡 공유",
+    "twitter": "X(트위터) 공유",
+    "embed": "임베드 코드 복사",
+    "embedCopied": "임베드 코드가 복사되었습니다!"
+  },
+  "gallery": {
+    "title": "공개 갤러리",
+    "subtitle": "다른 사용자들이 만든 멋진 3D 모델을 구경해보세요",
+    "empty": "아직 공개된 모델이 없습니다",
+    "emptyDescription": "첫 번째로 모델을 공유해보세요!",
+    "viewModel": "모델 보기",
+    "createdBy": "제작자",
+    "loadMore": "더 보기",
+    "madeWith": "AI로 생성됨"
+  },
+  "visibility": {
+    "public": "공개",
+    "private": "비공개",
+    "toggleLabel": "모델 공개 설정",
+    "madePublic": "모델이 공개되었습니다",
+    "madePrivate": "모델이 비공개로 변경되었습니다"
   },
   "order": {
     "title": "주문 확인",

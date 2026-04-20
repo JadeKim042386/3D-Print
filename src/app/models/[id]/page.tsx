@@ -2,12 +2,13 @@
 
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
-import { getModel } from "@/lib/api";
+import { getModel, updateModelVisibility } from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
+import ShareButton from "@/components/ShareButton";
 
 const ModelViewer = dynamic(() => import("@/components/ModelViewer"), {
   ssr: false,
@@ -87,6 +88,46 @@ function GenerationProgress() {
   );
 }
 
+function VisibilityToggle({ modelId, isPublic }: { modelId: string; isPublic: boolean }) {
+  const { t } = useTranslation();
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const queryClient = useQueryClient();
+  const [toast, setToast] = useState<string | null>(null);
+
+  const mutation = useMutation({
+    mutationFn: (newVisibility: boolean) =>
+      updateModelVisibility(modelId, newVisibility, accessToken!),
+    onSuccess: (data) => {
+      queryClient.setQueryData(["model", modelId], data);
+      setToast(
+        data.isPublic ? t("visibility.madePublic") : t("visibility.madePrivate")
+      );
+      setTimeout(() => setToast(null), 2500);
+    },
+  });
+
+  return (
+    <div className="flex items-center gap-3">
+      <label className="relative inline-flex items-center cursor-pointer">
+        <input
+          type="checkbox"
+          checked={isPublic}
+          onChange={(e) => mutation.mutate(e.target.checked)}
+          disabled={mutation.isPending}
+          className="sr-only peer"
+        />
+        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-900" />
+      </label>
+      <span className="text-sm text-gray-600">
+        {isPublic ? t("visibility.public") : t("visibility.private")}
+      </span>
+      {toast && (
+        <span className="text-xs text-green-600 animate-pulse">{toast}</span>
+      )}
+    </div>
+  );
+}
+
 export default function ModelPage() {
   const { t } = useTranslation();
   const params = useParams<{ id: string }>();
@@ -150,6 +191,16 @@ export default function ModelPage() {
       ) : model.status === "ready" && model.stlUrl ? (
         <div className="flex flex-col gap-4">
           <ModelViewer stlUrl={model.stlUrl} />
+
+          <div className="flex items-center justify-between">
+            <VisibilityToggle
+              modelId={params.id}
+              isPublic={model.isPublic ?? false}
+            />
+            {model.isPublic && (
+              <ShareButton modelId={params.id} modelPrompt={model.prompt} />
+            )}
+          </div>
 
           <div className="flex flex-col sm:flex-row gap-3">
             <a
