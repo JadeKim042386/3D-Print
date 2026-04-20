@@ -6,6 +6,13 @@ export interface GenerationJobData {
   modelId: string;
   prompt: string;
   format?: string;
+  /** Optional physical dimension constraints for post-processing */
+  dimensions?: {
+    width_mm: number;
+    height_mm: number;
+    depth_mm: number;
+    mode?: "proportional" | "exact";
+  };
 }
 
 export interface GenerationJobResult {

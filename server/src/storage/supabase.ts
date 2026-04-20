@@ -19,7 +19,7 @@ const CONTENT_TYPE_MAP: Record<string, string> = {
 };
 
 /**
- * Download a file from a URL and upload it to Supabase Storage.
+ * Download a file from a URL (http/https or data URI) and upload it to Supabase Storage.
  * Returns the public URL of the stored file.
  */
 export async function uploadToStorage(
@@ -28,15 +28,27 @@ export async function uploadToStorage(
   filePath: string,
   sourceUrl: string
 ): Promise<string> {
-  // Download the file from the provider
-  const response = await fetch(sourceUrl);
-  if (!response.ok) {
-    throw new Error(
-      `Failed to download model from ${sourceUrl}: ${response.status}`
-    );
-  }
+  let buffer: Buffer;
 
-  const buffer = Buffer.from(await response.arrayBuffer());
+  if (sourceUrl.startsWith("data:")) {
+    // data:[<mediatype>][;base64],<data>
+    const commaIdx = sourceUrl.indexOf(",");
+    if (commaIdx === -1) throw new Error("Malformed data URI");
+    const meta = sourceUrl.slice(5, commaIdx);
+    const data = sourceUrl.slice(commaIdx + 1);
+    buffer = meta.endsWith(";base64")
+      ? Buffer.from(data, "base64")
+      : Buffer.from(decodeURIComponent(data));
+  } else {
+    // Download the file from the provider
+    const response = await fetch(sourceUrl);
+    if (!response.ok) {
+      throw new Error(
+        `Failed to download model from ${sourceUrl}: ${response.status}`
+      );
+    }
+    buffer = Buffer.from(await response.arrayBuffer());
+  }
 
   // Infer content type from file extension
   const ext = filePath.split(".").pop()?.toLowerCase() ?? "";

@@ -1,6 +1,43 @@
 /** Supported 3D output formats */
 export type OutputFormat = "stl" | "obj" | "glb" | "fbx";
 
+/** Scaling strategy for dimensional post-processing */
+export type ScalingMode = "proportional" | "exact";
+
+/**
+ * Physical dimension constraints specified by the user (all in mm).
+ * When provided, the generated mesh is post-processed to match these dimensions.
+ */
+export interface DimensionSpec {
+  width_mm: number;
+  height_mm: number;
+  depth_mm: number;
+  /** Default: "proportional" — preserves shape; "exact" applies per-axis scale */
+  mode?: ScalingMode;
+}
+
+/** Measured AABB dimensions of a mesh (mm). */
+export interface MeshDimensions {
+  width_mm: number;
+  height_mm: number;
+  depth_mm: number;
+}
+
+/**
+ * Result of dimensional post-processing: what was requested vs what was measured,
+ * and an accuracy score.
+ */
+export interface DimensionResult {
+  requested: MeshDimensions;
+  actual: MeshDimensions;
+  /** 100 = exact match; lower = larger deviation */
+  accuracy_pct: number;
+  /** Max absolute error in mm across all three axes */
+  max_error_mm: number;
+  /** Whether the result passed the accuracy threshold */
+  passed: boolean;
+}
+
 /** Status of a generation task on the provider side */
 export type GenerationStatus =
   | "pending"

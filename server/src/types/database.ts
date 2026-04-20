@@ -73,6 +73,15 @@ export type Database = {
           thumbnail_url: string | null
           updated_at: string
           user_id: string
+          // Dimensional accuracy fields (migration 005)
+          width_mm: number | null
+          height_mm: number | null
+          depth_mm: number | null
+          scaling_mode: string | null
+          actual_width_mm: number | null
+          actual_height_mm: number | null
+          actual_depth_mm: number | null
+          dimensional_accuracy_pct: number | null
         }
         Insert: {
           created_at?: string
@@ -87,6 +96,15 @@ export type Database = {
           thumbnail_url?: string | null
           updated_at?: string
           user_id: string
+          // Dimensional accuracy fields (migration 005)
+          width_mm?: number | null
+          height_mm?: number | null
+          depth_mm?: number | null
+          scaling_mode?: string | null
+          actual_width_mm?: number | null
+          actual_height_mm?: number | null
+          actual_depth_mm?: number | null
+          dimensional_accuracy_pct?: number | null
         }
         Update: {
           created_at?: string
@@ -101,6 +119,15 @@ export type Database = {
           thumbnail_url?: string | null
           updated_at?: string
           user_id?: string
+          // Dimensional accuracy fields (migration 005)
+          width_mm?: number | null
+          height_mm?: number | null
+          depth_mm?: number | null
+          scaling_mode?: string | null
+          actual_width_mm?: number | null
+          actual_height_mm?: number | null
+          actual_depth_mm?: number | null
+          dimensional_accuracy_pct?: number | null
         }
         Relationships: [
           {
