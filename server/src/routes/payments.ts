@@ -1,12 +1,12 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure } from "../trpc/trpc.js";
+import { router, protectedProcedure, consentedProcedure } from "../trpc/trpc.js";
 import type { PaymentProvider } from "../types/payment.js";
 
 export function createPaymentsRouter(paymentProvider: PaymentProvider) {
   return router({
-    /** Create a payment order */
-    createOrder: protectedProcedure
+    /** Create a payment order — requires PIPA consents */
+    createOrder: consentedProcedure
       .input(
         z.object({
           modelId: z.string().uuid(),

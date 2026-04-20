@@ -16,6 +16,7 @@ import type { PaymentProvider } from "./types/payment.js";
 import type { PrintProvider } from "./types/print.js";
 import type { Database } from "./types/database.js";
 import { createTransport } from "nodemailer";
+import { piiSafeLoggerOptions } from "./middleware/pii-sanitizer.js";
 
 function createPaymentProvider(config: ReturnType<typeof loadConfig>): PaymentProvider {
   if (!config.TOSS_PAYMENTS_SECRET_KEY || !config.TOSS_PAYMENTS_CLIENT_KEY) {
@@ -84,7 +85,12 @@ async function main() {
 
   const appRouter = createAppRouter(paymentProvider, printProviders);
 
-  const server = Fastify({ logger: true });
+  const server = Fastify({
+    logger: {
+      level: "info",
+      ...piiSafeLoggerOptions,
+    },
+  });
 
   await server.register(fastifyTRPCPlugin, {
     prefix: "/trpc",

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure } from "../trpc/trpc.js";
+import { router, protectedProcedure, consentedProcedure } from "../trpc/trpc.js";
 import type { PrintProvider, PrintMaterial } from "../types/print.js";
 
 const materialSchema = z.enum([
@@ -91,8 +91,8 @@ export function createPrintRouter(providers: PrintProvider[]) {
         return { quotes, modelId: input.modelId };
       }),
 
-    /** Place a print order with a specific provider */
-    createOrder: protectedProcedure
+    /** Place a print order with a specific provider — requires PIPA consents */
+    createOrder: consentedProcedure
       .input(
         z.object({
           modelId: z.string().uuid(),

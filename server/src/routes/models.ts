@@ -1,10 +1,10 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure } from "../trpc/trpc.js";
+import { router, protectedProcedure, consentedProcedure } from "../trpc/trpc.js";
 
 export const modelsRouter = router({
-  /** Create a new model (enqueue generation) */
-  create: protectedProcedure
+  /** Create a new model (enqueue generation) — requires PIPA consents */
+  create: consentedProcedure
     .input(
       z.object({
         prompt: z.string().min(1).max(500),

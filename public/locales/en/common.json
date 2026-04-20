@@ -29,7 +29,11 @@
     "noAccount": "Don't have an account?",
     "hasAccount": "Already have an account?",
     "loginError": "Login failed",
-    "signupError": "Sign up failed"
+    "signupError": "Sign up failed",
+    "privacyPolicy": "Privacy Policy",
+    "privacyAgree": " — I agree (required)",
+    "dataProcessingAgree": "I agree to the collection and use of personal data (required)",
+    "consentRequired": "You must agree to the required consent items"
   },
   "nav": {
     "home": "Home",
