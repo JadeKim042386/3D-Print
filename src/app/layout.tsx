@@ -19,9 +19,36 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "3D 프린팅 브로커리지",
-  description: "AI로 3D 모델을 생성하고 프린팅까지 한 번에",
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://localhost:3000"
+  ),
+  title: "3D 프린팅 브로커리지 — AI로 3D 모델 생성부터 프린팅까지",
+  description:
+    "텍스트 하나로 3D 모델을 생성하고, 최적의 업체에서 프린팅까지 한 번에. AI 기반 3D 프린팅 브로커리지 서비스.",
   manifest: "/manifest.json",
+  openGraph: {
+    title: "3D 프린팅 브로커리지 — AI로 3D 모델 생성부터 프린팅까지",
+    description:
+      "텍스트 하나로 3D 모델을 생성하고, 최적의 업체에서 프린팅까지 한 번에.",
+    locale: "ko_KR",
+    type: "website",
+    siteName: "3D 프린팅 브로커리지",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "AI 3D 프린팅 브로커리지",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "3D 프린팅 브로커리지 — AI로 3D 모델 생성부터 프린팅까지",
+    description:
+      "텍스트 하나로 3D 모델을 생성하고, 최적의 업체에서 프린팅까지 한 번에.",
+    images: ["/og-image.png"],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { getProviderQuotes, getModel, type PrintProvider } from "@/lib/api";
@@ -124,8 +125,17 @@ export default function PrintQuotesPage() {
 
   if (!accessToken) {
     return (
-      <div className="min-h-[calc(100vh-57px)] flex items-center justify-center">
-        <p className="text-gray-500">{t("auth.login")}</p>
+      <div className="min-h-[calc(100vh-57px)] flex flex-col items-center justify-center px-4 text-center">
+        <h1 className="mb-2 text-xl font-bold text-gray-900">
+          {t("dashboard.loginRequired")}
+        </h1>
+        <p className="mb-6 text-gray-600">{t("dashboard.loginDescription")}</p>
+        <Link
+          href="/auth"
+          className="inline-flex items-center rounded-lg bg-gray-900 px-6 py-3 text-sm font-medium text-white hover:bg-gray-800 min-h-[44px]"
+        >
+          {t("dashboard.goToLogin")}
+        </Link>
       </div>
     );
   }

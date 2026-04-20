@@ -39,14 +39,14 @@ export default function Navbar() {
   return (
     <nav className="border-b border-gray-200 bg-white">
       <div className="mx-auto max-w-5xl flex items-center justify-between px-4 py-3">
-        <Link href="/" className="text-xl font-bold text-gray-900">
+        <Link href="/" className="text-lg sm:text-xl font-bold text-gray-900 truncate mr-2">
           {t("app.title")}
         </Link>
 
-        <div className="flex items-center gap-4">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-4">
           <button
             onClick={toggleLocale}
-            className="text-sm text-gray-600 hover:text-gray-900 px-3 py-2 rounded border border-gray-300 min-h-[44px] min-w-[44px] flex items-center justify-center"
+            className="text-sm text-gray-600 hover:text-gray-900 px-2 sm:px-3 py-2 rounded border border-gray-300 min-h-[44px] min-w-[44px] flex items-center justify-center"
           >
             {i18n.language === "ko" ? "EN" : "한국어"}
           </button>

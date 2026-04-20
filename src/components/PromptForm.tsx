@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { generateModel } from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
@@ -55,7 +56,9 @@ export default function PromptForm() {
 
         {!accessToken && (
           <p className="text-sm text-gray-500 text-center">
-            {t("auth.login")}
+            <Link href="/auth" className="text-gray-900 font-medium hover:underline">
+              {t("landing.ctaLogin")}
+            </Link>
           </p>
         )}
       </div>

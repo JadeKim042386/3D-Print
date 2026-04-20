@@ -105,16 +105,36 @@ export default function ModelPage() {
 
   if (!accessToken) {
     return (
-      <div className="min-h-[calc(100vh-57px)] flex items-center justify-center">
-        <p className="text-gray-500">{t("auth.login")}</p>
+      <div className="min-h-[calc(100vh-57px)] flex flex-col items-center justify-center px-4 text-center">
+        <h1 className="mb-2 text-xl font-bold text-gray-900">
+          {t("dashboard.loginRequired")}
+        </h1>
+        <p className="mb-6 text-gray-600">{t("dashboard.loginDescription")}</p>
+        <Link
+          href="/auth"
+          className="inline-flex items-center rounded-lg bg-gray-900 px-6 py-3 text-sm font-medium text-white hover:bg-gray-800 min-h-[44px]"
+        >
+          {t("dashboard.goToLogin")}
+        </Link>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-[calc(100vh-57px)] flex items-center justify-center">
-        <p className="text-red-500">{t("viewer.error")}</p>
+      <div className="min-h-[calc(100vh-57px)] flex flex-col items-center justify-center px-4 text-center">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+          <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className="text-red-600">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+          </svg>
+        </div>
+        <p className="text-red-600 font-medium mb-4">{t("viewer.error")}</p>
+        <Link
+          href="/"
+          className="text-sm text-gray-600 hover:text-gray-900 underline"
+        >
+          {t("error.goHome")}
+        </Link>
       </div>
     );
   }
