@@ -53,3 +53,131 @@ export async function getModel(
 
   return res.json();
 }
+
+// --- Print Provider Types ---
+
+export interface PrintProvider {
+  id: string;
+  name: string;
+  materials: PrintMaterial[];
+  estimatedDays: number;
+  available: boolean;
+}
+
+export interface PrintMaterial {
+  id: string;
+  name: string;
+  priceKrw: number;
+}
+
+export interface PrintQuotesResponse {
+  providers: PrintProvider[];
+}
+
+export async function getProviderQuotes(
+  modelId: string,
+  token: string
+): Promise<PrintQuotesResponse> {
+  const res = await fetch(`${API_BASE_URL}/models/${modelId}/quotes`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Get quotes failed: ${res.status}`);
+  }
+
+  return res.json();
+}
+
+// --- Order Types ---
+
+export type OrderStatus =
+  | "pending"
+  | "paid"
+  | "printing"
+  | "shipped"
+  | "delivered"
+  | "failed";
+
+export type PaymentMethod = "card" | "kakaopay";
+
+export interface CreateOrderRequest {
+  modelId: string;
+  providerId: string;
+  materialId: string;
+  paymentMethod: PaymentMethod;
+}
+
+export interface OrderResponse {
+  id: string;
+  status: OrderStatus;
+  modelId: string;
+  providerId: string;
+  providerName: string;
+  materialName: string;
+  priceKrw: number;
+  estimatedDays: number;
+  paymentMethod: PaymentMethod;
+  tossPaymentKey?: string;
+  createdAt: string;
+}
+
+export async function createOrder(
+  data: CreateOrderRequest,
+  token: string
+): Promise<OrderResponse> {
+  const res = await fetch(`${API_BASE_URL}/orders`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Create order failed: ${res.status}`);
+  }
+
+  return res.json();
+}
+
+export async function getOrder(
+  orderId: string,
+  token: string
+): Promise<OrderResponse> {
+  const res = await fetch(`${API_BASE_URL}/orders/${orderId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Get order failed: ${res.status}`);
+  }
+
+  return res.json();
+}
+
+export async function confirmPayment(
+  orderId: string,
+  paymentKey: string,
+  token: string
+): Promise<OrderResponse> {
+  const res = await fetch(`${API_BASE_URL}/orders/${orderId}/confirm`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ paymentKey }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Confirm payment failed: ${res.status}`);
+  }
+
+  return res.json();
+}

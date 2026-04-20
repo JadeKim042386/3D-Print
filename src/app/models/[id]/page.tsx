@@ -1,6 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { getModel } from "@/lib/api";
@@ -62,12 +63,12 @@ export default function ModelPage() {
             >
               {t("viewer.download")}
             </a>
-            <button
-              disabled
-              className="flex-1 bg-white text-gray-900 py-3 px-6 rounded-xl font-medium border border-gray-300 opacity-50 cursor-not-allowed"
+            <Link
+              href={`/models/${params.id}/print`}
+              className="flex-1 text-center bg-white text-gray-900 py-3 px-6 rounded-xl font-medium border border-gray-300 hover:bg-gray-50 transition-colors"
             >
               {t("viewer.requestPrint")}
-            </button>
+            </Link>
           </div>
         </div>
       ) : (
