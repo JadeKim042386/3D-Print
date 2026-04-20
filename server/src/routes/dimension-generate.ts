@@ -13,6 +13,7 @@ import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../trpc/trpc.js";
 import { computeRefitDimensions } from "../lib/dimension-refit.js";
 import { validateImageUrl } from "../lib/image-validator.js";
+import { deductCredit } from "../lib/credits.js";
 
 const dimensionSchema = z.object({
   width_mm:  z.number().min(1).max(2000),
@@ -40,6 +41,9 @@ export const dimensionGenerateRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Enforce credit limit before creating the model record
+      await deductCredit(ctx.supabase, ctx.user.id);
+
       const { data: model, error } = await ctx.supabase
         .from("models")
         .insert({
@@ -98,6 +102,9 @@ export const dimensionGenerateRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Enforce credit limit before creating the model record
+      await deductCredit(ctx.supabase, ctx.user.id);
+
       // Validate image URL before proceeding
       const imageValidation = await validateImageUrl(input.imageUrl);
       if (!imageValidation.valid) {

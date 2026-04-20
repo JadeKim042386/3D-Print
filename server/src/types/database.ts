@@ -389,6 +389,172 @@ export type Database = {
           },
         ]
       }
+      subscription_plans: {
+        Row: {
+          id: string
+          name: string
+          name_ko: string
+          price_krw: number
+          credits: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          name: string
+          name_ko: string
+          price_krw?: number
+          credits: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          name_ko?: string
+          price_krw?: number
+          credits?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_credits: {
+        Row: {
+          id: string
+          user_id: string
+          plan_id: string
+          credits_used: number
+          credits_limit: number
+          period_start: string
+          period_end: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          plan_id?: string
+          credits_used?: number
+          credits_limit?: number
+          period_start?: string
+          period_end?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          plan_id?: string
+          credits_used?: number
+          credits_limit?: number
+          period_start?: string
+          period_end?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_credits_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_credits_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_transactions: {
+        Row: {
+          id: string
+          user_id: string
+          delta: number
+          reason: string
+          model_id: string | null
+          admin_id: string | null
+          note: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          delta: number
+          reason: string
+          model_id?: string | null
+          admin_id?: string | null
+          note?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          delta?: number
+          reason?: string
+          model_id?: string | null
+          admin_id?: string | null
+          note?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      model_exports: {
+        Row: {
+          id: string
+          model_id: string
+          format: "stl" | "obj" | "glb" | "gltf" | "3mf"
+          status: "pending" | "converting" | "ready" | "failed"
+          file_url: string | null
+          file_size_bytes: number | null
+          error_message: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          model_id: string
+          format: "stl" | "obj" | "glb" | "gltf" | "3mf"
+          status?: "pending" | "converting" | "ready" | "failed"
+          file_url?: string | null
+          file_size_bytes?: number | null
+          error_message?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          model_id?: string
+          format?: "stl" | "obj" | "glb" | "gltf" | "3mf"
+          status?: "pending" | "converting" | "ready" | "failed"
+          file_url?: string | null
+          file_size_bytes?: number | null
+          error_message?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "model_exports_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "models"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
           avatar_url: string | null

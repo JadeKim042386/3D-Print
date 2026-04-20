@@ -8,6 +8,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../trpc/trpc.js";
+import { deductCredit } from "../lib/credits.js";
 
 export const generateRouter = router({
   /** Enqueue a Meshy AI text-to-3D generation job */
@@ -18,6 +19,9 @@ export const generateRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Enforce credit limit before creating the model record
+      await deductCredit(ctx.supabase, ctx.user.id);
+
       const { data: model, error } = await ctx.supabase
         .from("models")
         .insert({

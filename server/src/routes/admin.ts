@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, adminProcedure } from "../trpc/trpc.js";
 import type { Database } from "../types/database.js";
+import { adminAdjustCredits, ensureUserCredits } from "../lib/credits.js";
 
 const orderStatusSchema = z.enum([
   "pending",
@@ -325,6 +326,83 @@ export const adminRouter = router({
       totalModelsWithAccuracy: rows.length,
     };
   }),
+
+  /** Get a user's current credit balance (admin view) */
+  getUserCredits: adminProcedure
+    .input(z.object({ userId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      return ensureUserCredits(ctx.supabase, input.userId);
+    }),
+
+  /** Manually adjust a user's credits (admin override) */
+  adjustUserCredits: adminProcedure
+    .input(
+      z.object({
+        userId: z.string().uuid(),
+        /** Positive = consume credits, negative = restore/add credits */
+        delta: z.number().int().min(-1000).max(1000),
+        note:  z.string().max(500).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      return adminAdjustCredits(
+        ctx.supabase,
+        input.userId,
+        input.delta,
+        ctx.user.id,
+        input.note
+      );
+    }),
+
+  /** Change a user's subscription plan (admin override) */
+  setUserPlan: adminProcedure
+    .input(
+      z.object({
+        userId: z.string().uuid(),
+        planId: z.enum(["free", "pro", "business"]),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const planCredits: Record<string, number> = {
+        free:     3,
+        pro:      30,
+        business: -1,
+      };
+
+      const newLimit = planCredits[input.planId]!;
+
+      const { data, error } = await ctx.supabase
+        .from("user_credits")
+        .update({
+          plan_id:       input.planId,
+          credits_limit: newLimit,
+          // Reset usage when upgrading
+          credits_used:  0,
+        })
+        .eq("user_id", input.userId)
+        .select("*")
+        .single();
+
+      if (error) {
+        // Row may not exist yet — upsert via ensureUserCredits first
+        const credits = await ensureUserCredits(ctx.supabase, input.userId);
+        const { data: updated, error: updateError } = await ctx.supabase
+          .from("user_credits")
+          .update({ plan_id: input.planId, credits_limit: newLimit, credits_used: 0 })
+          .eq("id", credits.id)
+          .select("*")
+          .single();
+        if (updateError || !updated) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: `Failed to update user plan: ${updateError?.message}`,
+          });
+        }
+        return updated;
+      }
+
+      return data;
+    }),
 
   /** Revenue metrics */
   getMetrics: adminProcedure.query(async ({ ctx }) => {
