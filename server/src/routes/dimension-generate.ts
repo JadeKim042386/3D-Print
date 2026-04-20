@@ -12,6 +12,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../trpc/trpc.js";
 import { computeRefitDimensions } from "../lib/dimension-refit.js";
+import { validateImageUrl } from "../lib/image-validator.js";
 
 const dimensionSchema = z.object({
   width_mm:  z.number().min(1).max(2000),
@@ -97,6 +98,15 @@ export const dimensionGenerateRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Validate image URL before proceeding
+      const imageValidation = await validateImageUrl(input.imageUrl);
+      if (!imageValidation.valid) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Image validation failed: ${imageValidation.error}`,
+        });
+      }
+
       const { data: model, error } = await ctx.supabase
         .from("models")
         .insert({

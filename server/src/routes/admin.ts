@@ -229,6 +229,103 @@ export const adminRouter = router({
       return { users: enrichedUsers, total: count ?? 0 };
     }),
 
+  /**
+   * Generation quality metrics — quantitative evaluation of dimensional accuracy
+   * across generation types (text-to-3D, image-to-3D, parametric).
+   *
+   * Returns aggregate statistics: mean accuracy, min/max, pass rate, and
+   * per-generation-type breakdowns for quality monitoring and research.
+   */
+  getGenerationMetrics: adminProcedure.query(async ({ ctx }) => {
+    // Fetch all models with dimensional accuracy data
+    const { data: models } = await ctx.supabase
+      .from("models")
+      .select("generation_type, dimensional_accuracy_pct, actual_width_mm, actual_height_mm, actual_depth_mm, width_mm, height_mm, depth_mm, status, source_image_url, created_at")
+      .not("dimensional_accuracy_pct", "is", null)
+      .eq("status", "ready");
+
+    const rows = models ?? [];
+
+    // Helper: compute stats for a set of accuracy values
+    function computeStats(accuracyValues: number[]) {
+      if (accuracyValues.length === 0) {
+        return { count: 0, meanAccuracy: null, minAccuracy: null, maxAccuracy: null, medianAccuracy: null, passRate: null, stdDev: null };
+      }
+      const sorted = [...accuracyValues].sort((a, b) => a - b);
+      const n = sorted.length;
+      const sum = sorted.reduce((a, b) => a + b, 0);
+      const mean = sum / n;
+      const variance = sorted.reduce((acc, v) => acc + (v - mean) ** 2, 0) / n;
+      const median = n % 2 === 0
+        ? (sorted[n / 2 - 1]! + sorted[n / 2]!) / 2
+        : sorted[Math.floor(n / 2)]!;
+      const passed = sorted.filter((v) => v >= 99).length;
+
+      return {
+        count: n,
+        meanAccuracy: Math.round(mean * 100) / 100,
+        minAccuracy: Math.round(sorted[0]! * 100) / 100,
+        maxAccuracy: Math.round(sorted[n - 1]! * 100) / 100,
+        medianAccuracy: Math.round(median * 100) / 100,
+        passRate: Math.round((passed / n) * 10000) / 100,
+        stdDev: Math.round(Math.sqrt(variance) * 100) / 100,
+      };
+    }
+
+    // All models
+    const allAccuracy = rows.map((r) => r.dimensional_accuracy_pct!);
+    const overall = computeStats(allAccuracy);
+
+    // Per generation type
+    const byType: Record<string, number[]> = {};
+    for (const r of rows) {
+      const type = r.generation_type ?? "unknown";
+      if (!byType[type]) byType[type] = [];
+      byType[type]!.push(r.dimensional_accuracy_pct!);
+    }
+
+    const perType: Record<string, ReturnType<typeof computeStats>> = {};
+    for (const [type, vals] of Object.entries(byType)) {
+      perType[type] = computeStats(vals);
+    }
+
+    // Per size bucket
+    const sizeBuckets = { small: [] as number[], medium: [] as number[], large: [] as number[] };
+    for (const r of rows) {
+      const maxDim = Math.max(r.width_mm ?? 0, r.height_mm ?? 0, r.depth_mm ?? 0);
+      const acc = r.dimensional_accuracy_pct!;
+      if (maxDim <= 50) sizeBuckets.small.push(acc);
+      else if (maxDim <= 200) sizeBuckets.medium.push(acc);
+      else sizeBuckets.large.push(acc);
+    }
+
+    const perSize = {
+      small: computeStats(sizeBuckets.small),
+      medium: computeStats(sizeBuckets.medium),
+      large: computeStats(sizeBuckets.large),
+    };
+
+    // Image-to-3D specific stats
+    const imageModels = rows.filter((r) => r.source_image_url != null);
+    const imageAccuracy = imageModels.map((r) => r.dimensional_accuracy_pct!);
+    const imageStats = computeStats(imageAccuracy);
+
+    // Trend: last 7 days
+    const weekAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+    const recentRows = rows.filter((r) => r.created_at > weekAgo);
+    const recentAccuracy = recentRows.map((r) => r.dimensional_accuracy_pct!);
+    const recentStats = computeStats(recentAccuracy);
+
+    return {
+      overall,
+      perGenerationType: perType,
+      perSizeBucket: perSize,
+      imageTo3d: imageStats,
+      lastSevenDays: recentStats,
+      totalModelsWithAccuracy: rows.length,
+    };
+  }),
+
   /** Revenue metrics */
   getMetrics: adminProcedure.query(async ({ ctx }) => {
     // Total orders count
