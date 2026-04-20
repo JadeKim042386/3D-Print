@@ -14,8 +14,47 @@ export interface ModelResponse {
   status: "pending" | "processing" | "ready" | "error";
   prompt: string;
   stlUrl?: string;
+  sourceImageUrl?: string | null;
   isPublic?: boolean;
   createdAt: string;
+}
+
+export interface ImageGenerateRequest {
+  imageUrl: string;
+  dimensions: {
+    width_mm: number;
+    height_mm: number;
+    depth_mm: number;
+    mode?: "proportional" | "exact";
+  };
+}
+
+export interface ImageGenerateResponse {
+  modelId: string;
+  jobId: string;
+  status: "queued";
+  queueName: string;
+}
+
+export async function generateModelFromImage(
+  data: ImageGenerateRequest,
+  token: string
+): Promise<ImageGenerateResponse> {
+  const res = await fetch(`${API_BASE_URL}/trpc/dimensionGenerate.generateFromImage`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ json: data }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Image generate failed: ${res.status}`);
+  }
+
+  const json = await res.json();
+  return json.result?.data?.json ?? json.result?.data ?? json;
 }
 
 export interface PublicModelResponse {

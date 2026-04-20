@@ -1,5 +1,5 @@
 /** Supported print provider names */
-export type PrintProviderName = "3dline" | "craftcloud";
+export type PrintProviderName = "3dline" | "craftcloud" | "creatable3d" | "printon3d";
 
 /** Materials available for 3D printing */
 export type PrintMaterial =

@@ -18,6 +18,8 @@ const envSchema = z.object({
   // Print providers
   THREEDLINE_ORDER_EMAIL: z.string().email().optional(),
   CRAFTCLOUD_API_KEY: z.string().optional(),
+  CREATABLE3D_API_KEY: z.string().optional(),
+  PRINTON3D_API_KEY: z.string().optional(),
   // Sentry
   SENTRY_DSN: z.string().optional(),
   SENTRY_ENVIRONMENT: z.string().default("production"),

@@ -96,7 +96,7 @@ export function createPrintRouter(providers: PrintProvider[]) {
       .input(
         z.object({
           modelId: z.string().uuid(),
-          providerName: z.enum(["3dline", "craftcloud"]),
+          providerName: z.enum(["3dline", "craftcloud", "creatable3d", "printon3d"]),
           material: materialSchema,
           quantity: z.number().int().min(1).max(100).default(1),
           priceKrw: z.number().int().positive(),

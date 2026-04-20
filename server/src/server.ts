@@ -14,6 +14,8 @@ import { createAppRouter, type AppRouter } from "./routes/app-router.js";
 import { TossPaymentsProvider } from "./providers/toss-payments.js";
 import { ThreeDLineProvider } from "./providers/threedline.js";
 import { CraftcloudProvider } from "./providers/craftcloud.js";
+import { Creatable3DProvider } from "./providers/creatable3d.js";
+import { PrintOn3DProvider } from "./providers/printon3d.js";
 import type { PaymentProvider } from "./types/payment.js";
 import type { PrintProvider } from "./types/print.js";
 import type { Database } from "./types/database.js";
@@ -67,6 +69,14 @@ function createPrintProviders(config: ReturnType<typeof loadConfig>): PrintProvi
 
   if (config.CRAFTCLOUD_API_KEY) {
     providers.push(new CraftcloudProvider({ apiKey: config.CRAFTCLOUD_API_KEY }));
+  }
+
+  if (config.CREATABLE3D_API_KEY) {
+    providers.push(new Creatable3DProvider({ apiKey: config.CREATABLE3D_API_KEY }));
+  }
+
+  if (config.PRINTON3D_API_KEY) {
+    providers.push(new PrintOn3DProvider({ apiKey: config.PRINTON3D_API_KEY }));
   }
 
   return providers;
@@ -249,6 +259,74 @@ async function main() {
     }
   });
 
+  // Creatable3D webhook handler
+  server.post("/webhooks/creatable3d", async (request, reply) => {
+    const signature = (request.headers["x-creatable-signature"] as string) ?? "";
+    const body = JSON.stringify(request.body);
+
+    const creatable3dProvider = printProviders.find((p) => p.name === "creatable3d");
+    if (!creatable3dProvider) {
+      return reply.code(404).send({ error: "Creatable3D provider not configured" });
+    }
+
+    try {
+      const event = creatable3dProvider.verifyWebhook(body, signature);
+      const supabase = createClient<Database>(
+        config.SUPABASE_URL,
+        config.SUPABASE_SERVICE_KEY
+      );
+
+      await supabase
+        .from("print_orders")
+        .update({
+          status: event.status,
+          tracking_number: event.trackingNumber,
+          tracking_url: event.trackingUrl,
+        })
+        .eq("provider_order_id", event.providerOrderId)
+        .eq("provider_name", "creatable3d");
+
+      return reply.code(200).send({ success: true });
+    } catch (err) {
+      server.log.error(err, "Creatable3D webhook processing failed");
+      return reply.code(400).send({ error: "Invalid webhook" });
+    }
+  });
+
+  // PrintOn3D webhook handler
+  server.post("/webhooks/printon3d", async (request, reply) => {
+    const signature = (request.headers["x-printon-signature"] as string) ?? "";
+    const body = JSON.stringify(request.body);
+
+    const printon3dProvider = printProviders.find((p) => p.name === "printon3d");
+    if (!printon3dProvider) {
+      return reply.code(404).send({ error: "PrintOn3D provider not configured" });
+    }
+
+    try {
+      const event = printon3dProvider.verifyWebhook(body, signature);
+      const supabase = createClient<Database>(
+        config.SUPABASE_URL,
+        config.SUPABASE_SERVICE_KEY
+      );
+
+      await supabase
+        .from("print_orders")
+        .update({
+          status: event.status,
+          tracking_number: event.trackingNumber,
+          tracking_url: event.trackingUrl,
+        })
+        .eq("provider_order_id", event.providerOrderId)
+        .eq("provider_name", "printon3d");
+
+      return reply.code(200).send({ success: true });
+    } catch (err) {
+      server.log.error(err, "PrintOn3D webhook processing failed");
+      return reply.code(400).send({ error: "Invalid webhook" });
+    }
+  });
+
   // ── REST adapter (bridges frontend api.ts to tRPC logic) ──────────────────
   const db = createClient<Database>(config.SUPABASE_URL, config.SUPABASE_SERVICE_KEY);
 
@@ -299,21 +377,98 @@ async function main() {
       .eq("id", request.params.id).eq("user_id", user.id).single();
     if (!data) return reply.code(404).send({ error: "Not found" });
     return { id: data.id, status: data.status, prompt: data.prompt,
-      stlUrl: data.file_url, createdAt: data.created_at };
+      stlUrl: data.file_url, sourceImageUrl: data.source_image_url ?? null,
+      createdAt: data.created_at };
   });
 
-  server.get<{ Params: { id: string } }>("/models/:id/quotes", async (request, reply) => {
-    if (!await getUser(request.headers.authorization))
-      return reply.code(401).send({ error: "Unauthorized" });
-    const quotes = printProviders.map((p, i) => ({
-      id: `${p.name}-${i}`,
-      name: p.name,
-      materials: [{ id: "pla", name: "PLA", priceKrw: 15000 + i * 3000 }],
-      estimatedDays: 3 + i,
-      available: true,
-    }));
-    return { providers: quotes };
+  // GET /print-providers — list all active print providers with capabilities
+  server.get("/print-providers", async (request, reply) => {
+    // Public endpoint: no auth required for provider listing
+    const { data: providers } = await db
+      .from("print_providers")
+      .select("*")
+      .eq("active", true)
+      .order("min_lead_days", { ascending: true });
+
+    if (!providers || providers.length === 0) {
+      // Fallback: derive from configured providers
+      return {
+        providers: printProviders.map((p) => ({
+          name: p.name,
+          displayName: p.displayName,
+          location: "Korea",
+          supportsApi: true,
+          materials: ["PLA", "ABS", "PETG", "Resin", "Nylon", "TPU", "Metal"],
+          minLeadDays: 3,
+          active: true,
+        })),
+      };
+    }
+
+    return {
+      providers: providers.map((p) => ({
+        name: p.name,
+        displayName: p.display_name,
+        displayNameKo: p.display_name_ko,
+        description: p.description,
+        descriptionKo: p.description_ko,
+        location: p.location,
+        supportsApi: p.supports_api,
+        supportsWebhook: p.supports_webhook,
+        materials: p.materials,
+        minLeadDays: p.min_lead_days,
+        active: p.active,
+      })),
+    };
   });
+
+  // GET /models/:id/quotes — get live quotes from all providers for a model
+  server.get<{ Params: { id: string }; Querystring: { material?: string; quantity?: string } }>(
+    "/models/:id/quotes",
+    async (request, reply) => {
+      const user = await getUser(request.headers.authorization);
+      if (!user) return reply.code(401).send({ error: "Unauthorized" });
+
+      const { data: model } = await db
+        .from("models")
+        .select("id, file_url, status")
+        .eq("id", request.params.id)
+        .eq("user_id", user.id)
+        .single();
+
+      if (!model) return reply.code(404).send({ error: "Model not found" });
+      if (!model.file_url) return reply.code(400).send({ error: "Model file not ready" });
+
+      const material = (request.query.material ?? "PLA") as string;
+      const quantity = parseInt(request.query.quantity ?? "1", 10) || 1;
+
+      // Request quotes from all providers in parallel
+      const quoteResults = await Promise.allSettled(
+        printProviders.map((provider) =>
+          provider.getQuote({
+            modelFileUrl: model.file_url!,
+            material: material as any,
+            quantity,
+          })
+        )
+      );
+
+      const quotes = quoteResults
+        .filter(
+          (r): r is PromiseFulfilledResult<Awaited<ReturnType<typeof printProviders[number]["getQuote"]>>> =>
+            r.status === "fulfilled"
+        )
+        .map((r) => r.value)
+        .sort((a, b) => a.priceKrw - b.priceKrw);
+
+      return {
+        modelId: request.params.id,
+        material,
+        quantity,
+        quotes,
+      };
+    }
+  );
 
   server.get("/orders", async (request, reply) => {
     const user = await getUser(request.headers.authorization);

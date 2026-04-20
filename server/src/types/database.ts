@@ -229,6 +229,54 @@ export type Database = {
           },
         ]
       }
+      print_providers: {
+        Row: {
+          name: string
+          display_name: string
+          display_name_ko: string
+          description: string | null
+          description_ko: string | null
+          location: string
+          supports_api: boolean
+          supports_webhook: boolean
+          materials: string[]
+          min_lead_days: number
+          active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          name: string
+          display_name: string
+          display_name_ko: string
+          description?: string | null
+          description_ko?: string | null
+          location?: string
+          supports_api?: boolean
+          supports_webhook?: boolean
+          materials?: string[]
+          min_lead_days?: number
+          active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          name?: string
+          display_name?: string
+          display_name_ko?: string
+          description?: string | null
+          description_ko?: string | null
+          location?: string
+          supports_api?: boolean
+          supports_webhook?: boolean
+          materials?: string[]
+          min_lead_days?: number
+          active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       print_orders: {
         Row: {
           id: string
