@@ -10,6 +10,14 @@ export function getSupabaseClient(config: Config): SupabaseClient {
   return client;
 }
 
+const CONTENT_TYPE_MAP: Record<string, string> = {
+  glb: "model/gltf-binary",
+  gltf: "model/gltf+json",
+  stl: "model/stl",
+  obj: "text/plain",
+  fbx: "application/octet-stream",
+};
+
 /**
  * Download a file from a URL and upload it to Supabase Storage.
  * Returns the public URL of the stored file.
@@ -30,11 +38,15 @@ export async function uploadToStorage(
 
   const buffer = Buffer.from(await response.arrayBuffer());
 
+  // Infer content type from file extension
+  const ext = filePath.split(".").pop()?.toLowerCase() ?? "";
+  const contentType = CONTENT_TYPE_MAP[ext] ?? "application/octet-stream";
+
   // Upload to Supabase Storage
   const { error } = await supabase.storage
     .from(bucket)
     .upload(filePath, buffer, {
-      contentType: "model/gltf-binary",
+      contentType,
       upsert: true,
     });
 

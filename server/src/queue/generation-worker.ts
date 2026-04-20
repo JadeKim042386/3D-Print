@@ -67,9 +67,11 @@ export function createGenerationWorker(
         .from("models")
         .update({
           status: "ready",
-          storage_url: storageUrl,
+          file_url: storageUrl,
           provider_task_id: providerTaskId,
-          provider_name: provider.name,
+          provider: provider.name,
+          thumbnail_url: result.thumbnailUrl ?? null,
+          format: result.format,
         })
         .eq("id", modelId);
 

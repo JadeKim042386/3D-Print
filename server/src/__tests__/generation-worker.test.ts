@@ -90,9 +90,11 @@ describe("Generation Worker Logic", () => {
     // Step 5: Update model record
     supabase.from("models").update({
       status: "ready",
-      storage_url: storageUrl,
+      file_url: storageUrl,
       provider_task_id: providerTaskId,
-      provider_name: provider.name,
+      provider: provider.name,
+      thumbnail_url: "https://cdn.example.com/thumb.png",
+      format: "glb",
     });
 
     expect(provider.createTask).toHaveBeenCalledWith({ prompt: "a blue vase" });
