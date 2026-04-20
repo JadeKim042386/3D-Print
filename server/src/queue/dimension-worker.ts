@@ -23,6 +23,7 @@ import { generateParametricStl } from "../lib/parametric-generator.js";
 import { buildDimensionAwarePrompt } from "../lib/dimension-prompt.js";
 import { scaleMeshToDimensions, scaleBufferToDimensions } from "../lib/dimension-scaler.js";
 import { validateDimensions, toleranceForSize } from "../lib/dimension-validator.js";
+import { computeRefitDimensions } from "../lib/dimension-refit.js";
 import {
   DIMENSION_QUEUE_NAME,
   type DimensionJobData,
@@ -50,68 +51,110 @@ export function createDimensionWorker(
       await supabase.from("models").update({ status: "generating" }).eq("id", modelId);
       await job.updateProgress(10);
 
-      // ------------------------------------------------------------------
-      // Step 1: Classify the shape to choose the generation path
-      // ------------------------------------------------------------------
-      const classification = classifyShape(prompt);
-
       let modelBuffer: Buffer;
       let modelFormat: string;
       let providerJobId: string;
       let generationType: "parametric" | "dimension_aware_ai";
 
-      if (classification.category === "parametric" && classification.parametricType) {
-        // ----------------------------------------------------------------
-        // Path A: Parametric — exact math, 0 mm error, no AI
-        // ----------------------------------------------------------------
-        console.log(
-          `[dimension-worker] Parametric: ${classification.parametricType} ` +
-          `(${dimensions.width_mm}×${dimensions.height_mm}×${dimensions.depth_mm}mm)`
-        );
+      const refit = job.data.refit;
 
-        modelBuffer = generateParametricStl({
-          type: classification.parametricType,
-          dimensions,
-        });
+      if (refit) {
+        // ================================================================
+        // REFIT PATH — re-generate or re-scale an existing model
+        // ================================================================
+        if (refit.sourceGenerationType === "parametric") {
+          // Parametric refit: regenerate from scratch with new dimensions
+          // (parametric generation is deterministic and free, no AI cost)
+          const classification = classifyShape(prompt);
+          const pType = classification.parametricType ?? "box";
 
-        modelFormat = "stl";
-        providerJobId = `parametric-${classification.parametricType}-${Date.now()}`;
-        generationType = "parametric";
+          console.log(
+            `[dimension-worker] Refit parametric (${pType}): ` +
+            `${dimensions.width_mm}×${dimensions.height_mm}×${dimensions.depth_mm}mm`
+          );
+
+          modelBuffer = generateParametricStl({ type: pType, dimensions });
+          modelFormat = "stl";
+          providerJobId = `refit-parametric-${pType}-${Date.now()}`;
+          generationType = "parametric";
+        } else {
+          // AI refit: download existing model → proportional scale to new dims
+          console.log(
+            `[dimension-worker] Refit AI model ${refit.sourceModelId}: ` +
+            `${dimensions.width_mm}×${dimensions.height_mm}×${dimensions.depth_mm}mm`
+          );
+
+          const scaled = await scaleMeshToDimensions(
+            refit.sourceFileUrl,
+            dimensions,
+            refit.sourceFormat
+          );
+          modelBuffer = scaled.buffer;
+          modelFormat = refit.sourceFormat;
+          providerJobId = `refit-ai-${refit.sourceModelId}-${Date.now()}`;
+          generationType = "dimension_aware_ai";
+        }
 
         await job.updateProgress(70);
       } else {
-        // ----------------------------------------------------------------
-        // Path B: Dimension-aware AI — model designed to target dimensions
-        // ----------------------------------------------------------------
-        console.log(
-          `[dimension-worker] Dimension-aware AI: "${prompt}" ` +
-          `(${dimensions.width_mm}×${dimensions.height_mm}×${dimensions.depth_mm}mm)`
-        );
+        // ================================================================
+        // NEW GENERATION PATH — classify shape and generate
+        // ================================================================
+        const classification = classifyShape(prompt);
 
-        const enrichedPrompt = buildDimensionAwarePrompt(prompt, dimensions);
-        const { providerTaskId } = await aiProvider.createTask({ prompt: enrichedPrompt });
-        providerJobId = providerTaskId;
-        await job.updateProgress(20);
+        if (classification.category === "parametric" && classification.parametricType) {
+          // ----------------------------------------------------------------
+          // Path A: Parametric — exact math, 0 mm error, no AI
+          // ----------------------------------------------------------------
+          console.log(
+            `[dimension-worker] Parametric: ${classification.parametricType} ` +
+            `(${dimensions.width_mm}×${dimensions.height_mm}×${dimensions.depth_mm}mm)`
+          );
 
-        const result = await aiProvider.waitForCompletion(providerTaskId, {
-          pollIntervalMs: 5000,
-          timeoutMs: 600_000,
-        });
-        await job.updateProgress(60);
+          modelBuffer = generateParametricStl({
+            type: classification.parametricType,
+            dimensions,
+          });
 
-        if (!result.modelUrl) throw new Error("AI provider returned no model URL");
+          modelFormat = "stl";
+          providerJobId = `parametric-${classification.parametricType}-${Date.now()}`;
+          generationType = "parametric";
 
-        // Fine-tune: correct any residual dimensional drift after dimension-aware design
-        const scaleFormat = (result.format === "glb" || result.format === "stl")
-          ? result.format
-          : "glb";
+          await job.updateProgress(70);
+        } else {
+          // ----------------------------------------------------------------
+          // Path B: Dimension-aware AI — model designed to target dimensions
+          // ----------------------------------------------------------------
+          console.log(
+            `[dimension-worker] Dimension-aware AI: "${prompt}" ` +
+            `(${dimensions.width_mm}×${dimensions.height_mm}×${dimensions.depth_mm}mm)`
+          );
 
-        const scaled = await scaleMeshToDimensions(result.modelUrl, dimensions, scaleFormat);
-        modelBuffer = scaled.buffer;
-        modelFormat = scaleFormat;
-        generationType = "dimension_aware_ai";
+          const enrichedPrompt = buildDimensionAwarePrompt(prompt, dimensions);
+          const { providerTaskId } = await aiProvider.createTask({ prompt: enrichedPrompt });
+          providerJobId = providerTaskId;
+          await job.updateProgress(20);
 
-        await job.updateProgress(70);
+          const result = await aiProvider.waitForCompletion(providerTaskId, {
+            pollIntervalMs: 5000,
+            timeoutMs: 600_000,
+          });
+          await job.updateProgress(60);
+
+          if (!result.modelUrl) throw new Error("AI provider returned no model URL");
+
+          // Fine-tune: correct any residual dimensional drift after dimension-aware design
+          const scaleFormat = (result.format === "glb" || result.format === "stl")
+            ? result.format
+            : "glb";
+
+          const scaled = await scaleMeshToDimensions(result.modelUrl, dimensions, scaleFormat);
+          modelBuffer = scaled.buffer;
+          modelFormat = scaleFormat;
+          generationType = "dimension_aware_ai";
+
+          await job.updateProgress(70);
+        }
       }
 
       // ------------------------------------------------------------------
@@ -148,9 +191,11 @@ export function createDimensionWorker(
         status:                   "ready",
         file_url:                 storageUrl,
         provider_task_id:         providerJobId,
-        provider:                 generationType === "parametric"
-                                    ? `parametric-${classification.parametricType}`
-                                    : aiProvider.name,
+        provider:                 refit
+                                    ? `refit-${refit.sourceGenerationType}`
+                                    : generationType === "parametric"
+                                      ? `parametric-${classifyShape(prompt).parametricType}`
+                                      : aiProvider.name,
         format:                   modelFormat,
         generation_type:          generationType,
         actual_width_mm:          validation.actual.width_mm,
