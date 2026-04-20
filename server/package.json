@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "dev": "tsx watch src/server.ts",
-    "worker": "tsx src/worker.ts",
-    "dimension-worker": "tsx src/dimension-worker.ts",
-    "print-readiness-worker": "tsx src/print-readiness-worker.ts",
+    "dev": "tsx --env-file=.env watch src/server.ts",
+    "worker": "tsx --env-file=.env src/worker.ts",
+    "dimension-worker": "tsx --env-file=.env src/dimension-worker.ts",
+    "print-readiness-worker": "tsx --env-file=.env src/print-readiness-worker.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
