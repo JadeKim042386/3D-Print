@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "dev": "tsx --env-file=.env watch src/server.ts",
+    "dev": "tsx watch --env-file=.env src/server.ts",
     "worker": "tsx --env-file=.env src/worker.ts",
     "dimension-worker": "tsx --env-file=.env src/dimension-worker.ts",
     "print-readiness-worker": "tsx --env-file=.env src/print-readiness-worker.ts",
