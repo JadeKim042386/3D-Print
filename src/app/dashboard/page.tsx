@@ -67,7 +67,7 @@ function ModelCard({ model, lang }: { model: ModelResponse; lang: string }) {
       <div className="flex flex-wrap gap-2">
         <Link
           href={`/models/${model.id}`}
-          className="inline-flex items-center rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+          className="inline-flex items-center rounded-md bg-gray-900 px-3 py-2.5 text-xs font-medium text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 min-h-[44px]"
           aria-label={`${t("dashboard.viewModel")} - ${model.prompt}`}
         >
           {t("dashboard.viewModel")}
@@ -76,7 +76,7 @@ function ModelCard({ model, lang }: { model: ModelResponse; lang: string }) {
           <a
             href={model.stlUrl}
             download
-            className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2.5 text-xs font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 min-h-[44px]"
             aria-label={`${t("dashboard.downloadStl")} - ${model.prompt}`}
           >
             {t("dashboard.downloadStl")}

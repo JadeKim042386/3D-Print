@@ -46,7 +46,7 @@ export default function Navbar() {
         <div className="flex items-center gap-4">
           <button
             onClick={toggleLocale}
-            className="text-sm text-gray-600 hover:text-gray-900 px-2 py-1 rounded border border-gray-300"
+            className="text-sm text-gray-600 hover:text-gray-900 px-3 py-2 rounded border border-gray-300 min-h-[44px] min-w-[44px] flex items-center justify-center"
           >
             {i18n.language === "ko" ? "EN" : "한국어"}
           </button>
@@ -55,13 +55,13 @@ export default function Navbar() {
             <>
               <Link
                 href="/dashboard"
-                className="text-sm text-gray-600 hover:text-gray-900"
+                className="text-sm text-gray-600 hover:text-gray-900 min-h-[44px] flex items-center px-2"
               >
                 {t("nav.dashboard")}
               </Link>
               <button
                 onClick={handleLogout}
-                className="text-sm text-gray-600 hover:text-gray-900"
+                className="text-sm text-gray-600 hover:text-gray-900 min-h-[44px] px-2"
               >
                 {t("auth.logout")}
               </button>
@@ -69,7 +69,7 @@ export default function Navbar() {
           ) : (
             <Link
               href="/auth"
-              className="text-sm bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800"
+              className="text-sm bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 min-h-[44px] flex items-center"
             >
               {t("auth.login")}
             </Link>

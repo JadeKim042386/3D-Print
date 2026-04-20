@@ -1,0 +1,23 @@
+{
+  "name": "3D 프린팅 브로커리지",
+  "short_name": "3D프린트",
+  "description": "AI로 3D 모델을 생성하고 프린팅까지 한 번에",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#111827",
+  "lang": "ko",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

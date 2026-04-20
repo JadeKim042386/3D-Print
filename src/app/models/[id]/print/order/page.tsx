@@ -26,8 +26,13 @@ declare global {
 const TOSS_CLIENT_KEY =
   process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY ?? "test_ck_placeholder";
 
+const krwFormatter = new Intl.NumberFormat("ko-KR", {
+  style: "currency",
+  currency: "KRW",
+});
+
 function formatKrw(amount: number): string {
-  return `₩${amount.toLocaleString("ko-KR")}`;
+  return krwFormatter.format(amount);
 }
 
 export default function OrderPage() {

@@ -48,7 +48,7 @@ export default function PromptForm() {
         <button
           type="submit"
           disabled={isLoading || !prompt.trim() || !accessToken}
-          className="w-full bg-gray-900 text-white py-3 px-6 rounded-xl text-base font-medium hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="w-full bg-gray-900 text-white py-3 px-6 rounded-xl text-base font-medium hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-h-[44px]"
         >
           {isLoading ? t("prompt.generating") : t("prompt.submit")}
         </button>

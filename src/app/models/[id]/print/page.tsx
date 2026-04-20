@@ -9,8 +9,13 @@ import { useAuthStore } from "@/lib/store";
 
 type SortMode = "price" | "speed";
 
+const krwFormatter = new Intl.NumberFormat("ko-KR", {
+  style: "currency",
+  currency: "KRW",
+});
+
 function formatKrw(amount: number): string {
-  return `₩${amount.toLocaleString("ko-KR")}`;
+  return krwFormatter.format(amount);
 }
 
 function ProviderCard({
@@ -160,7 +165,7 @@ export default function PrintQuotesPage() {
           <div className="flex gap-2 mb-4">
             <button
               onClick={() => setSortMode("price")}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors min-h-[44px] ${
                 sortMode === "price"
                   ? "bg-gray-900 text-white"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -170,7 +175,7 @@ export default function PrintQuotesPage() {
             </button>
             <button
               onClick={() => setSortMode("speed")}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors min-h-[44px] ${
                 sortMode === "speed"
                   ? "bg-gray-900 text-white"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"

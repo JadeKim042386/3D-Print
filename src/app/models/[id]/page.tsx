@@ -4,9 +4,79 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
+import { useState, useEffect } from "react";
 import { getModel } from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
 import ModelViewer from "@/components/ModelViewer";
+
+function GenerationProgress() {
+  const { t } = useTranslation();
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setElapsed((prev) => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Meshy.ai jobs typically take 30-120s
+  const estimatedTotal = 90;
+  const progress = Math.min((elapsed / estimatedTotal) * 100, 95);
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return m > 0 ? `${m}:${s.toString().padStart(2, "0")}` : `${s}${t("viewer.seconds")}`;
+  };
+
+  const remaining = Math.max(estimatedTotal - elapsed, 5);
+
+  return (
+    <div className="w-full aspect-square max-h-[600px] rounded-xl border border-gray-200 bg-gray-50 flex flex-col items-center justify-center gap-5 px-6">
+      <div className="relative w-16 h-16">
+        <svg className="w-16 h-16 animate-spin" viewBox="0 0 64 64">
+          <circle
+            cx="32" cy="32" r="28"
+            fill="none"
+            stroke="#e5e7eb"
+            strokeWidth="4"
+          />
+          <circle
+            cx="32" cy="32" r="28"
+            fill="none"
+            stroke="#111827"
+            strokeWidth="4"
+            strokeLinecap="round"
+            strokeDasharray={`${progress * 1.76} 176`}
+            className="transition-all duration-1000 ease-out"
+          />
+        </svg>
+      </div>
+
+      <div className="text-center">
+        <p className="text-gray-900 font-medium mb-1">
+          {t("viewer.processing")}
+        </p>
+        <p className="text-sm text-gray-500">
+          {t("viewer.estimatedTime", { time: formatTime(remaining) })}
+        </p>
+      </div>
+
+      <div className="w-full max-w-xs">
+        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-gray-900 rounded-full transition-all duration-1000 ease-out"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <p className="text-xs text-gray-400 mt-2 text-center">
+          {t("viewer.elapsed", { time: formatTime(elapsed) })}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export default function ModelPage() {
   const { t } = useTranslation();
@@ -47,10 +117,7 @@ export default function ModelPage() {
       </h1>
 
       {!model || model.status === "pending" || model.status === "processing" ? (
-        <div className="w-full aspect-square max-h-[600px] rounded-xl border border-gray-200 bg-gray-50 flex flex-col items-center justify-center gap-4">
-          <div className="h-8 w-8 border-4 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
-          <p className="text-gray-500">{t("viewer.processing")}</p>
-        </div>
+        <GenerationProgress />
       ) : model.status === "ready" && model.stlUrl ? (
         <div className="flex flex-col gap-4">
           <ModelViewer stlUrl={model.stlUrl} />
@@ -59,13 +126,13 @@ export default function ModelPage() {
             <a
               href={model.stlUrl}
               download
-              className="flex-1 text-center bg-gray-900 text-white py-3 px-6 rounded-xl font-medium hover:bg-gray-800 transition-colors"
+              className="flex-1 text-center bg-gray-900 text-white py-3 px-6 rounded-xl font-medium hover:bg-gray-800 transition-colors min-h-[44px] flex items-center justify-center"
             >
               {t("viewer.download")}
             </a>
             <Link
               href={`/models/${params.id}/print`}
-              className="flex-1 text-center bg-white text-gray-900 py-3 px-6 rounded-xl font-medium border border-gray-300 hover:bg-gray-50 transition-colors"
+              className="flex-1 text-center bg-white text-gray-900 py-3 px-6 rounded-xl font-medium border border-gray-300 hover:bg-gray-50 transition-colors min-h-[44px] flex items-center justify-center"
             >
               {t("viewer.requestPrint")}
             </Link>
