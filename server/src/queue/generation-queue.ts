@@ -2,17 +2,11 @@ import { Queue, type ConnectionOptions } from "bullmq";
 
 export const GENERATION_QUEUE_NAME = "generation";
 
+/** Job data for Meshy AI text-to-3D generation */
 export interface GenerationJobData {
   modelId: string;
   prompt: string;
   format?: string;
-  /** Optional physical dimension constraints for post-processing */
-  dimensions?: {
-    width_mm: number;
-    height_mm: number;
-    depth_mm: number;
-    mode?: "proportional" | "exact";
-  };
 }
 
 export interface GenerationJobResult {
@@ -21,7 +15,9 @@ export interface GenerationJobResult {
   providerTaskId: string;
 }
 
-export function createGenerationQueue(connection: ConnectionOptions): Queue<GenerationJobData, GenerationJobResult> {
+export function createGenerationQueue(
+  connection: ConnectionOptions
+): Queue<GenerationJobData, GenerationJobResult> {
   return new Queue<GenerationJobData, GenerationJobResult>(GENERATION_QUEUE_NAME, {
     connection,
     defaultJobOptions: {

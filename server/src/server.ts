@@ -8,6 +8,7 @@ import { createClient } from "@supabase/supabase-js";
 import { loadConfig } from "./config.js";
 import { initSentry, Sentry } from "./lib/sentry.js";
 import { createGenerationQueue } from "./queue/generation-queue.js";
+import { createDimensionQueue } from "./queue/dimension-queue.js";
 import { createContextFactory } from "./trpc/context.js";
 import { createAppRouter, type AppRouter } from "./routes/app-router.js";
 import { TossPaymentsProvider } from "./providers/toss-payments.js";
@@ -97,15 +98,17 @@ async function main() {
     console.warn("[redis] Initial connection failed — generation queue unavailable:", (err as Error).message);
   }
 
-  const generationQueue = redisConnected ? createGenerationQueue(redis) : null;
-  const paymentProvider = createPaymentProvider(config);
-  const printProviders = createPrintProviders(config);
+  const generationQueue  = redisConnected ? createGenerationQueue(redis)  : null;
+  const dimensionQueue   = redisConnected ? createDimensionQueue(redis)   : null;
+  const paymentProvider  = createPaymentProvider(config);
+  const printProviders   = createPrintProviders(config);
 
   const createContext = createContextFactory({
-    supabaseUrl: config.SUPABASE_URL,
+    supabaseUrl:       config.SUPABASE_URL,
     supabaseServiceKey: config.SUPABASE_SERVICE_KEY,
-    supabaseAnonKey: config.SUPABASE_ANON_KEY,
+    supabaseAnonKey:   config.SUPABASE_ANON_KEY,
     generationQueue,
+    dimensionQueue,
   });
 
   const appRouter = createAppRouter(paymentProvider, printProviders);

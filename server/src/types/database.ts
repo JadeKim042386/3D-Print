@@ -82,6 +82,8 @@ export type Database = {
           actual_height_mm: number | null
           actual_depth_mm: number | null
           dimensional_accuracy_pct: number | null
+          // Generation type (migration 006)
+          generation_type: "ai" | "parametric" | "dimension_aware_ai" | null
         }
         Insert: {
           created_at?: string
@@ -105,6 +107,8 @@ export type Database = {
           actual_height_mm?: number | null
           actual_depth_mm?: number | null
           dimensional_accuracy_pct?: number | null
+          // Generation type (migration 006)
+          generation_type?: "ai" | "parametric" | "dimension_aware_ai" | null
         }
         Update: {
           created_at?: string
@@ -128,6 +132,8 @@ export type Database = {
           actual_height_mm?: number | null
           actual_depth_mm?: number | null
           dimensional_accuracy_pct?: number | null
+          // Generation type (migration 006)
+          generation_type?: "ai" | "parametric" | "dimension_aware_ai" | null
         }
         Relationships: [
           {
