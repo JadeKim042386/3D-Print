@@ -161,6 +161,38 @@ export async function getOrder(
   return res.json();
 }
 
+export async function listModels(
+  token: string
+): Promise<ModelResponse[]> {
+  const res = await fetch(`${API_BASE_URL}/models`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`List models failed: ${res.status}`);
+  }
+
+  return res.json();
+}
+
+export async function listOrders(
+  token: string
+): Promise<OrderResponse[]> {
+  const res = await fetch(`${API_BASE_URL}/orders`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`List orders failed: ${res.status}`);
+  }
+
+  return res.json();
+}
+
 export async function confirmPayment(
   orderId: string,
   paymentKey: string,

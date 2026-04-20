@@ -37,7 +37,31 @@
   },
   "nav": {
     "home": "Home",
-    "myModels": "My Models"
+    "myModels": "My Models",
+    "dashboard": "Dashboard",
+    "orders": "Orders"
+  },
+  "dashboard": {
+    "title": "My Dashboard",
+    "modelsTitle": "My 3D Models",
+    "ordersTitle": "Order History",
+    "emptyModels": "No models yet",
+    "emptyModelsDescription": "Create your first 3D model! AI will bring your ideas to life.",
+    "emptyOrders": "No orders yet",
+    "emptyOrdersDescription": "Generate a 3D model and order a print!",
+    "generateFirst": "Generate Your First Model",
+    "viewModel": "View Model",
+    "downloadStl": "Download STL",
+    "createdAt": "Created",
+    "statusPending": "Pending",
+    "statusProcessing": "Processing",
+    "statusReady": "Ready",
+    "statusError": "Error",
+    "viewOrder": "View Order",
+    "orderDate": "Order Date",
+    "loginRequired": "Login Required",
+    "loginDescription": "Please log in to access your dashboard.",
+    "goToLogin": "Log In"
   },
   "print": {
     "title": "3D Print Quotes",

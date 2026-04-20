@@ -100,8 +100,20 @@ async function main() {
     } satisfies FastifyTRPCPluginOptions<AppRouter>["trpcOptions"],
   });
 
-  // Health check
-  server.get("/health", async () => ({ status: "ok" }));
+  // Health check with service status
+  server.get("/health", async () => {
+    const services: Record<string, string> = {};
+
+    try {
+      await redis.ping();
+      services.redis = "ok";
+    } catch {
+      services.redis = "error";
+    }
+
+    const allOk = Object.values(services).every((s) => s === "ok");
+    return { status: allOk ? "ok" : "degraded", services };
+  });
 
   // Toss Payments webhook handler
   server.post("/webhooks/toss", async (request, reply) => {

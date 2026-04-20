@@ -37,7 +37,31 @@
   },
   "nav": {
     "home": "홈",
-    "myModels": "내 모델"
+    "myModels": "내 모델",
+    "dashboard": "대시보드",
+    "orders": "주문 내역"
+  },
+  "dashboard": {
+    "title": "내 대시보드",
+    "modelsTitle": "내 3D 모델",
+    "ordersTitle": "주문 내역",
+    "emptyModels": "아직 생성된 모델이 없습니다",
+    "emptyModelsDescription": "첫 번째 3D 모델을 만들어보세요! AI가 여러분의 아이디어를 현실로 만들어드립니다.",
+    "emptyOrders": "아직 주문 내역이 없습니다",
+    "emptyOrdersDescription": "3D 모델을 생성하고 프린팅을 주문해보세요!",
+    "generateFirst": "첫 모델 생성하기",
+    "viewModel": "모델 보기",
+    "downloadStl": "STL 다운로드",
+    "createdAt": "생성일",
+    "statusPending": "대기 중",
+    "statusProcessing": "생성 중",
+    "statusReady": "완료",
+    "statusError": "오류",
+    "viewOrder": "주문 상세",
+    "orderDate": "주문일",
+    "loginRequired": "로그인이 필요합니다",
+    "loginDescription": "대시보드를 이용하려면 먼저 로그인해주세요.",
+    "goToLogin": "로그인하기"
   },
   "print": {
     "title": "3D 프린팅 견적",

@@ -1,0 +1,14 @@
+app = "dpr-3d-worker"
+primary_region = "nrt"
+
+[build]
+
+[env]
+  NODE_ENV = "production"
+
+[processes]
+  worker = "node dist/worker.js"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
