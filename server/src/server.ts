@@ -378,7 +378,16 @@ async function main() {
     if (!data) return reply.code(404).send({ error: "Not found" });
     return { id: data.id, status: data.status, prompt: data.prompt,
       stlUrl: data.file_url, sourceImageUrl: data.source_image_url ?? null,
-      createdAt: data.created_at };
+      createdAt: data.created_at,
+      meshQuality: data.triangle_count != null
+        ? {
+            triangleCount: data.triangle_count,
+            printabilityScore: data.printability_score,
+            volume_mm3: data.mesh_volume_mm3,
+            surfaceArea_mm2: data.mesh_surface_area_mm2,
+          }
+        : null,
+    };
   });
 
   // GET /print-providers — list all active print providers with capabilities

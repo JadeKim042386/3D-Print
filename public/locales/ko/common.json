@@ -162,6 +162,13 @@
     "invalidDimensions": "치수는 1~2000mm 사이로 입력해주세요.",
     "referenceLabel": "참조 이미지"
   },
+  "meshQuality": {
+    "title": "메시 품질",
+    "triangles": "삼각형 수",
+    "printability": "프린팅 적합도",
+    "volume": "체적",
+    "surfaceArea": "표면적"
+  },
   "admin": {
     "title": "관리자 패널",
     "dashboard": "관리자",

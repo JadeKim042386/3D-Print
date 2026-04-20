@@ -203,6 +203,45 @@ export default function ModelPage() {
           )}
           <ModelViewer stlUrl={model.stlUrl} />
 
+          {/* Mesh quality info */}
+          {model.meshQuality && (
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <h3 className="text-sm font-medium text-gray-700 mb-3">{t("meshQuality.title")}</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                <div>
+                  <p className="text-lg font-semibold text-gray-900">
+                    {model.meshQuality.triangleCount.toLocaleString()}
+                  </p>
+                  <p className="text-xs text-gray-500">{t("meshQuality.triangles")}</p>
+                </div>
+                {model.meshQuality.printabilityScore != null && (
+                  <div>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {model.meshQuality.printabilityScore}/100
+                    </p>
+                    <p className="text-xs text-gray-500">{t("meshQuality.printability")}</p>
+                  </div>
+                )}
+                {model.meshQuality.volume_mm3 != null && (
+                  <div>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {model.meshQuality.volume_mm3.toLocaleString()} mm<sup>3</sup>
+                    </p>
+                    <p className="text-xs text-gray-500">{t("meshQuality.volume")}</p>
+                  </div>
+                )}
+                {model.meshQuality.surfaceArea_mm2 != null && (
+                  <div>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {model.meshQuality.surfaceArea_mm2.toLocaleString()} mm<sup>2</sup>
+                    </p>
+                    <p className="text-xs text-gray-500">{t("meshQuality.surfaceArea")}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center justify-between">
             <VisibilityToggle
               modelId={params.id}

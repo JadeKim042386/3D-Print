@@ -187,6 +187,14 @@ export const dimensionGenerateRouter = router({
           accuracy_pct:    data.dimensional_accuracy_pct ?? null,
           generation_type: data.generation_type ?? null,
         },
+        meshQuality: data.triangle_count != null
+          ? {
+              triangleCount:     data.triangle_count,
+              printabilityScore: data.printability_score,
+              volume_mm3:        data.mesh_volume_mm3,
+              surfaceArea_mm2:   data.mesh_surface_area_mm2,
+            }
+          : null,
       };
     }),
 

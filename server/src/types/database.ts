@@ -85,6 +85,11 @@ export type Database = {
           // Generation type (migration 006)
           generation_type: "ai" | "parametric" | "dimension_aware_ai" | "image_to_3d" | null
           source_image_url: string | null
+          // Mesh quality fields
+          triangle_count: number | null
+          printability_score: number | null
+          mesh_volume_mm3: number | null
+          mesh_surface_area_mm2: number | null
         }
         Insert: {
           created_at?: string
@@ -111,6 +116,10 @@ export type Database = {
           // Generation type (migration 006)
           generation_type?: "ai" | "parametric" | "dimension_aware_ai" | "image_to_3d" | null
           source_image_url?: string | null
+          triangle_count?: number | null
+          printability_score?: number | null
+          mesh_volume_mm3?: number | null
+          mesh_surface_area_mm2?: number | null
         }
         Update: {
           created_at?: string
@@ -137,6 +146,10 @@ export type Database = {
           // Generation type (migration 006)
           generation_type?: "ai" | "parametric" | "dimension_aware_ai" | "image_to_3d" | null
           source_image_url?: string | null
+          triangle_count?: number | null
+          printability_score?: number | null
+          mesh_volume_mm3?: number | null
+          mesh_surface_area_mm2?: number | null
         }
         Relationships: [
           {

@@ -9,6 +9,13 @@ export interface GenerateResponse {
   status: "pending" | "processing" | "ready" | "error";
 }
 
+export interface MeshQuality {
+  triangleCount: number;
+  printabilityScore: number | null;
+  volume_mm3: number | null;
+  surfaceArea_mm2: number | null;
+}
+
 export interface ModelResponse {
   id: string;
   status: "pending" | "processing" | "ready" | "error";
@@ -17,6 +24,7 @@ export interface ModelResponse {
   sourceImageUrl?: string | null;
   isPublic?: boolean;
   createdAt: string;
+  meshQuality?: MeshQuality | null;
 }
 
 export interface ImageGenerateRequest {

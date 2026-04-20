@@ -162,6 +162,13 @@
     "invalidDimensions": "Dimensions must be between 1 and 2000mm.",
     "referenceLabel": "Reference image"
   },
+  "meshQuality": {
+    "title": "Mesh Quality",
+    "triangles": "Triangles",
+    "printability": "Printability",
+    "volume": "Volume",
+    "surfaceArea": "Surface Area"
+  },
   "admin": {
     "title": "Admin Panel",
     "dashboard": "Admin",

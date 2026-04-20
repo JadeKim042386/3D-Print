@@ -29,6 +29,7 @@ import {
   type DimensionJobData,
   type DimensionJobResult,
 } from "./dimension-queue.js";
+import { analyzeStlQuality, type MeshQualityReport } from "../lib/mesh-quality.js";
 
 export interface DimensionWorkerDeps {
   connection: ConnectionOptions;
@@ -198,6 +199,20 @@ export function createDimensionWorker(
       const maxDim = Math.max(dimensions.width_mm, dimensions.height_mm, dimensions.depth_mm);
       const validation = validateDimensions(dimensions, measured.actualDimensions, toleranceForSize(maxDim));
 
+      // ------------------------------------------------------------------
+      // Step 2b: Mesh quality analysis (STL only for now)
+      // ------------------------------------------------------------------
+      let qualityReport: MeshQualityReport | null = null;
+      if (modelFormat === "stl") {
+        qualityReport = analyzeStlQuality(modelBuffer);
+        if (qualityReport.warnings.length > 0) {
+          console.log(
+            `[dimension-worker] Mesh quality warnings for ${modelId}: ` +
+            qualityReport.warnings.join("; ")
+          );
+        }
+      }
+
       await job.updateProgress(80);
 
       // ------------------------------------------------------------------
@@ -239,6 +254,13 @@ export function createDimensionWorker(
 
       if (job.data.imageSource) {
         updateData.source_image_url = job.data.imageSource.imageUrl;
+      }
+
+      if (qualityReport) {
+        updateData.triangle_count = qualityReport.triangleCount;
+        updateData.printability_score = qualityReport.printabilityScore;
+        updateData.mesh_volume_mm3 = qualityReport.volume_mm3;
+        updateData.mesh_surface_area_mm2 = qualityReport.surfaceArea_mm2;
       }
 
       await supabase.from("models").update(updateData).eq("id", modelId);

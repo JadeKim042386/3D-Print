@@ -7,6 +7,7 @@ import type { ReactNode, ErrorInfo } from "react";
 import { useTranslation } from "react-i18next";
 import * as THREE from "three";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 function detectWebGL(): boolean {
   try {
@@ -82,6 +83,31 @@ function StlModel({ url }: { url: string }) {
   );
 }
 
+function GlbModel({ url }: { url: string }) {
+  const [scene, setScene] = useState<THREE.Group | null>(null);
+
+  useEffect(() => {
+    const loader = new GLTFLoader();
+    loader.load(url, (gltf) => {
+      setScene(gltf.scene);
+    });
+  }, [url]);
+
+  if (!scene) return null;
+
+  return (
+    <Center>
+      <primitive object={scene} />
+    </Center>
+  );
+}
+
+function detectFormat(url: string): "glb" | "stl" {
+  const lower = url.toLowerCase();
+  if (lower.includes(".glb") || lower.includes(".gltf")) return "glb";
+  return "stl";
+}
+
 export default function ModelViewer({ stlUrl }: { stlUrl: string }) {
   const { t } = useTranslation();
   const [webglSupported, setWebglSupported] = useState(true);
@@ -132,7 +158,10 @@ export default function ModelViewer({ stlUrl }: { stlUrl: string }) {
             <ambientLight intensity={0.5} />
             <directionalLight position={[10, 10, 5]} intensity={1} />
             <directionalLight position={[-10, -10, -5]} intensity={0.3} />
-            <StlModel url={stlUrl} />
+            {detectFormat(stlUrl) === "glb"
+              ? <GlbModel url={stlUrl} />
+              : <StlModel url={stlUrl} />
+            }
             <OrbitControls enableDamping dampingFactor={0.1} />
           </Canvas>
         </Suspense>
