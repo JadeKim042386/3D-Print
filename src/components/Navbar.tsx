@@ -52,12 +52,20 @@ export default function Navbar() {
           </button>
 
           {user ? (
-            <button
-              onClick={handleLogout}
-              className="text-sm text-gray-600 hover:text-gray-900"
-            >
-              {t("auth.logout")}
-            </button>
+            <>
+              <Link
+                href="/dashboard"
+                className="text-sm text-gray-600 hover:text-gray-900"
+              >
+                {t("nav.dashboard")}
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="text-sm text-gray-600 hover:text-gray-900"
+              >
+                {t("auth.logout")}
+              </button>
+            </>
           ) : (
             <Link
               href="/auth"
