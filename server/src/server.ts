@@ -10,8 +10,12 @@ import { createGenerationQueue } from "./queue/generation-queue.js";
 import { createContextFactory } from "./trpc/context.js";
 import { createAppRouter, type AppRouter } from "./routes/app-router.js";
 import { TossPaymentsProvider } from "./providers/toss-payments.js";
+import { ThreeDLineProvider } from "./providers/threedline.js";
+import { CraftcloudProvider } from "./providers/craftcloud.js";
 import type { PaymentProvider } from "./types/payment.js";
+import type { PrintProvider } from "./types/print.js";
 import type { Database } from "./types/database.js";
+import { createTransport } from "nodemailer";
 
 function createPaymentProvider(config: ReturnType<typeof loadConfig>): PaymentProvider {
   if (!config.TOSS_PAYMENTS_SECRET_KEY || !config.TOSS_PAYMENTS_CLIENT_KEY) {
@@ -24,11 +28,52 @@ function createPaymentProvider(config: ReturnType<typeof loadConfig>): PaymentPr
   });
 }
 
+function createPrintProviders(config: ReturnType<typeof loadConfig>): PrintProvider[] {
+  const providers: PrintProvider[] = [];
+
+  if (config.THREEDLINE_ORDER_EMAIL) {
+    const transporter =
+      config.SMTP_HOST && config.SMTP_USER && config.SMTP_PASS
+        ? createTransport({
+            host: config.SMTP_HOST,
+            port: config.SMTP_PORT ?? 587,
+            secure: (config.SMTP_PORT ?? 587) === 465,
+            auth: { user: config.SMTP_USER, pass: config.SMTP_PASS },
+          })
+        : null;
+
+    providers.push(
+      new ThreeDLineProvider({
+        orderEmail: config.THREEDLINE_ORDER_EMAIL,
+        sendEmail: async (to, subject, body) => {
+          if (!transporter) {
+            console.log(`[3DLINE Email] To: ${to}\nSubject: ${subject}\n${body}`);
+            return;
+          }
+          await transporter.sendMail({
+            from: config.SMTP_FROM ?? config.SMTP_USER,
+            to,
+            subject,
+            text: body,
+          });
+        },
+      })
+    );
+  }
+
+  if (config.CRAFTCLOUD_API_KEY) {
+    providers.push(new CraftcloudProvider({ apiKey: config.CRAFTCLOUD_API_KEY }));
+  }
+
+  return providers;
+}
+
 async function main() {
   const config = loadConfig();
   const redis = new IORedis(config.REDIS_URL, { maxRetriesPerRequest: null });
   const generationQueue = createGenerationQueue(redis);
   const paymentProvider = createPaymentProvider(config);
+  const printProviders = createPrintProviders(config);
 
   const createContext = createContextFactory({
     supabaseUrl: config.SUPABASE_URL,
@@ -37,7 +82,7 @@ async function main() {
     generationQueue,
   });
 
-  const appRouter = createAppRouter(paymentProvider);
+  const appRouter = createAppRouter(paymentProvider, printProviders);
 
   const server = Fastify({ logger: true });
 
@@ -86,6 +131,40 @@ async function main() {
       return reply.code(200).send({ success: true });
     } catch (err) {
       server.log.error(err, "Webhook processing failed");
+      return reply.code(400).send({ error: "Invalid webhook" });
+    }
+  });
+
+  // Craftcloud print provider webhook handler
+  server.post("/webhooks/craftcloud", async (request, reply) => {
+    const signature = (request.headers["x-craftcloud-signature"] as string) ?? "";
+    const body = JSON.stringify(request.body);
+
+    const craftcloudProvider = printProviders.find((p) => p.name === "craftcloud");
+    if (!craftcloudProvider) {
+      return reply.code(404).send({ error: "Craftcloud provider not configured" });
+    }
+
+    try {
+      const event = craftcloudProvider.verifyWebhook(body, signature);
+      const supabase = createClient<Database>(
+        config.SUPABASE_URL,
+        config.SUPABASE_SERVICE_KEY
+      );
+
+      await supabase
+        .from("print_orders")
+        .update({
+          status: event.status,
+          tracking_number: event.trackingNumber,
+          tracking_url: event.trackingUrl,
+        })
+        .eq("provider_order_id", event.providerOrderId)
+        .eq("provider_name", "craftcloud");
+
+      return reply.code(200).send({ success: true });
+    } catch (err) {
+      server.log.error(err, "Craftcloud webhook processing failed");
       return reply.code(400).send({ error: "Invalid webhook" });
     }
   });

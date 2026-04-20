@@ -196,6 +196,102 @@ export type Database = {
           },
         ]
       }
+      print_orders: {
+        Row: {
+          id: string
+          user_id: string
+          model_id: string
+          provider_name: string
+          provider_order_id: string | null
+          status: string
+          material: string
+          quantity: number
+          price_krw: number | null
+          estimated_days: number | null
+          model_file_url: string
+          shipping_address: Json | null
+          customer_name: string | null
+          customer_email: string | null
+          customer_phone: string | null
+          tracking_number: string | null
+          tracking_url: string | null
+          quote_method: string | null
+          provider_quote_id: string | null
+          estimated_delivery_date: string | null
+          notes: string | null
+          error_message: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          model_id: string
+          provider_name: string
+          provider_order_id?: string | null
+          status?: string
+          material: string
+          quantity?: number
+          price_krw?: number | null
+          estimated_days?: number | null
+          model_file_url: string
+          shipping_address?: Json | null
+          customer_name?: string | null
+          customer_email?: string | null
+          customer_phone?: string | null
+          tracking_number?: string | null
+          tracking_url?: string | null
+          quote_method?: string | null
+          provider_quote_id?: string | null
+          estimated_delivery_date?: string | null
+          notes?: string | null
+          error_message?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          model_id?: string
+          provider_name?: string
+          provider_order_id?: string | null
+          status?: string
+          material?: string
+          quantity?: number
+          price_krw?: number | null
+          estimated_days?: number | null
+          model_file_url?: string
+          shipping_address?: Json | null
+          customer_name?: string | null
+          customer_email?: string | null
+          customer_phone?: string | null
+          tracking_number?: string | null
+          tracking_url?: string | null
+          quote_method?: string | null
+          provider_quote_id?: string | null
+          estimated_delivery_date?: string | null
+          notes?: string | null
+          error_message?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "print_orders_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "print_orders_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "models"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
           avatar_url: string | null
