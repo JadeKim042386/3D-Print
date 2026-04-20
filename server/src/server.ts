@@ -75,8 +75,29 @@ async function main() {
   const config = loadConfig();
   initSentry(config);
 
-  const redis = new IORedis(config.REDIS_URL, { maxRetriesPerRequest: null });
-  const generationQueue = createGenerationQueue(redis);
+  const redis = new IORedis(config.REDIS_URL, {
+    maxRetriesPerRequest: null,
+    lazyConnect: true,
+    retryStrategy(times) {
+      const delay = Math.min(times * 500, 5000);
+      return delay;
+    },
+  });
+  redis.on("error", (err) => {
+    console.error("[redis] Connection error:", err.message);
+  });
+
+  // Try connecting to Redis; if it fails the server still starts
+  let redisConnected = false;
+  try {
+    await redis.connect();
+    redisConnected = true;
+    console.log("[redis] Connected");
+  } catch (err) {
+    console.warn("[redis] Initial connection failed — generation queue unavailable:", (err as Error).message);
+  }
+
+  const generationQueue = redisConnected ? createGenerationQueue(redis) : null;
   const paymentProvider = createPaymentProvider(config);
   const printProviders = createPrintProviders(config);
 
@@ -137,11 +158,15 @@ async function main() {
   server.get("/health", async () => {
     const services: Record<string, string> = {};
 
-    try {
-      await redis.ping();
-      services.redis = "ok";
-    } catch {
-      services.redis = "error";
+    if (redisConnected) {
+      try {
+        await redis.ping();
+        services.redis = "ok";
+      } catch {
+        services.redis = "error";
+      }
+    } else {
+      services.redis = "not_connected";
     }
 
     const allOk = Object.values(services).every((s) => s === "ok");
@@ -248,6 +273,7 @@ async function main() {
     if (!user) return reply.code(401).send({ error: "Unauthorized" });
     const { prompt } = request.body as { prompt: string };
     
+    if (!generationQueue) return reply.code(503).send({ error: "Generation queue unavailable" });
     const { data: model, error } = await db.from("models")
       .insert({ prompt, status: "queued", user_id: user.id }).select("id").single();
     if (error || !model) return reply.code(500).send({ error: error?.message });

@@ -9,7 +9,7 @@ import type {
 
 export interface AppContext {
   supabase: SupabaseClient<Database>;
-  generationQueue: Queue<GenerationJobData, GenerationJobResult>;
+  generationQueue: Queue<GenerationJobData, GenerationJobResult> | null;
   user: { id: string; email: string } | null;
 }
 
@@ -17,7 +17,7 @@ export interface CreateContextDeps {
   supabaseUrl: string;
   supabaseServiceKey: string;
   supabaseAnonKey: string;
-  generationQueue: Queue<GenerationJobData, GenerationJobResult>;
+  generationQueue: Queue<GenerationJobData, GenerationJobResult> | null;
 }
 
 export function createContextFactory(deps: CreateContextDeps) {

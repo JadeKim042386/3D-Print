@@ -11,7 +11,18 @@ async function main() {
   initSentry(config);
 
   const supabase = getSupabaseClient(config);
-  const redis = new IORedis(config.REDIS_URL, { maxRetriesPerRequest: null });
+  const redis = new IORedis(config.REDIS_URL, {
+    maxRetriesPerRequest: null,
+    retryStrategy(times) {
+      const delay = Math.min(times * 500, 5000);
+      return delay;
+    },
+  });
+  redis.on("error", (err) => {
+    console.error("[redis] Connection error:", err.message);
+  });
+  // Worker requires Redis — fail loudly if it can't connect
+  await redis.ping();
   const provider = config.MESHY_API_KEY
     ? new MeshyProvider(config.MESHY_API_KEY)
     : new MockGenerationProvider();

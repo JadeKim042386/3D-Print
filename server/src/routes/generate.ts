@@ -28,6 +28,13 @@ export const generateRouter = router({
         });
       }
 
+      if (!ctx.generationQueue) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Generation queue unavailable — Redis not connected",
+        });
+      }
+
       const job = await ctx.generationQueue.add("text-to-3d", {
         modelId: model.id,
         prompt: input.prompt,
