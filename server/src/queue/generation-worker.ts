@@ -1,4 +1,5 @@
 import { Worker, type ConnectionOptions } from "bullmq";
+import * as Sentry from "@sentry/node";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { GenerationProvider } from "../types/generation.js";
 import { uploadToStorage } from "../storage/supabase.js";
@@ -83,6 +84,18 @@ export function createGenerationWorker(
   );
 
   worker.on("failed", async (job, error) => {
+    Sentry.captureException(error, {
+      tags: {
+        queue: GENERATION_QUEUE_NAME,
+        jobId: job?.id,
+        modelId: job?.data.modelId,
+      },
+      extra: {
+        prompt: job?.data.prompt,
+        attemptsMade: job?.attemptsMade,
+      },
+    });
+
     if (job) {
       await supabase
         .from("models")

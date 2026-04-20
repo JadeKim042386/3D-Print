@@ -18,6 +18,9 @@ const envSchema = z.object({
   // Print providers
   THREEDLINE_ORDER_EMAIL: z.string().email().optional(),
   CRAFTCLOUD_API_KEY: z.string().optional(),
+  // Sentry
+  SENTRY_DSN: z.string().optional(),
+  SENTRY_ENVIRONMENT: z.string().default("production"),
   // Email (for print order notifications)
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().optional(),

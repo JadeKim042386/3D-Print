@@ -6,6 +6,7 @@ import {
 import IORedis from "ioredis";
 import { createClient } from "@supabase/supabase-js";
 import { loadConfig } from "./config.js";
+import { initSentry, Sentry } from "./lib/sentry.js";
 import { createGenerationQueue } from "./queue/generation-queue.js";
 import { createContextFactory } from "./trpc/context.js";
 import { createAppRouter, type AppRouter } from "./routes/app-router.js";
@@ -71,6 +72,8 @@ function createPrintProviders(config: ReturnType<typeof loadConfig>): PrintProvi
 
 async function main() {
   const config = loadConfig();
+  initSentry(config);
+
   const redis = new IORedis(config.REDIS_URL, { maxRetriesPerRequest: null });
   const generationQueue = createGenerationQueue(redis);
   const paymentProvider = createPaymentProvider(config);
@@ -90,6 +93,30 @@ async function main() {
       level: "info",
       ...piiSafeLoggerOptions,
     },
+  });
+
+  // Structured request logging: method, path, statusCode, durationMs
+  server.addHook("onResponse", (request, reply, done) => {
+    server.log.info(
+      {
+        method: request.method,
+        path: request.url,
+        statusCode: reply.statusCode,
+        durationMs: Math.round(reply.elapsedTime),
+      },
+      "request completed"
+    );
+    done();
+  });
+
+  // Capture unhandled errors in Sentry
+  server.setErrorHandler((error, request, reply) => {
+    Sentry.captureException(error, {
+      tags: { method: request.method, path: request.url },
+    });
+    server.log.error(error, "unhandled request error");
+    const statusCode = (error as { statusCode?: number }).statusCode ?? 500;
+    reply.status(statusCode).send({ error: "Internal Server Error" });
   });
 
   await server.register(fastifyTRPCPlugin, {

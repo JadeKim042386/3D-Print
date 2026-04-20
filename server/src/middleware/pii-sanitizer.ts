@@ -1,7 +1,7 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
 
 const EMAIL_REGEX = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
-const PHONE_REGEX = /\b(0\d{1,2}-?\d{3,4}-?\d{4}|\+82-?\d{1,2}-?\d{3,4}-?\d{4})\b/g;
+const PHONE_REGEX = /(?:0\d{1,2}-?\d{3,4}-?\d{4}|\+82-?\d{1,2}-?\d{3,4}-?\d{4})/g;
 
 /** Recursively redact PII from an object for logging purposes. */
 export function redactPii(obj: unknown): unknown {
