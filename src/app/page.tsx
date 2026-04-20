@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/lib/store";
 import PromptForm from "@/components/PromptForm";
+import ImageUploadForm from "@/components/ImageUploadForm";
 
 function FeatureCard({
   icon,
@@ -126,8 +128,11 @@ function LandingPage() {
   );
 }
 
+type GenerationMode = "text" | "image";
+
 function AuthenticatedHome() {
   const { t } = useTranslation();
+  const [mode, setMode] = useState<GenerationMode>("text");
 
   return (
     <div className="min-h-[calc(100vh-57px)] flex flex-col items-center justify-center px-4 py-12">
@@ -138,7 +143,33 @@ function AuthenticatedHome() {
         <p className="text-gray-600 text-lg">{t("app.description")}</p>
       </div>
 
-      <PromptForm />
+      {/* Mode toggle */}
+      <div className="flex items-center gap-1 mb-6 rounded-xl bg-gray-100 p-1">
+        <button
+          type="button"
+          onClick={() => setMode("text")}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            mode === "text"
+              ? "bg-white text-gray-900 shadow-sm"
+              : "text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          {t("modeToggle.text")}
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("image")}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            mode === "image"
+              ? "bg-white text-gray-900 shadow-sm"
+              : "text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          {t("modeToggle.image")}
+        </button>
+      </div>
+
+      {mode === "text" ? <PromptForm /> : <ImageUploadForm />}
     </div>
   );
 }

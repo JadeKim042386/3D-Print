@@ -81,6 +81,68 @@ export const dimensionGenerateRouter = router({
       };
     }),
 
+  /**
+   * Enqueue an image-to-3D generation job with dimensional constraints.
+   *
+   * The user uploads a reference image to Supabase Storage, then provides
+   * the public URL here along with target dimensions. The worker sends the
+   * image to the AI provider's image-to-3D endpoint, then applies the same
+   * dimensional scaling pipeline as text-to-3D.
+   */
+  generateFromImage: protectedProcedure
+    .input(
+      z.object({
+        imageUrl:   z.string().url(),
+        dimensions: dimensionSchema,
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { data: model, error } = await ctx.supabase
+        .from("models")
+        .insert({
+          prompt:           `[image-to-3d]`,
+          status:           "queued",
+          user_id:          ctx.user.id,
+          width_mm:         input.dimensions.width_mm,
+          height_mm:        input.dimensions.height_mm,
+          depth_mm:         input.dimensions.depth_mm,
+          scaling_mode:     input.dimensions.mode,
+          source_image_url: input.imageUrl,
+        })
+        .select("id")
+        .single();
+
+      if (error || !model) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to create model record: ${error?.message}`,
+        });
+      }
+
+      if (!ctx.dimensionQueue) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Dimension generation service unavailable — Redis not connected",
+        });
+      }
+
+      const job = await ctx.dimensionQueue.add("image-to-3d", {
+        modelId:    model.id,
+        prompt:     `[image-to-3d]`,
+        dimensions: input.dimensions,
+        imageSource: {
+          imageUrl: input.imageUrl,
+        },
+      });
+
+      return {
+        modelId:   model.id,
+        jobId:     job.id,
+        status:    "queued" as const,
+        queueName: "dimension-generation",
+      };
+    }),
+
   /** Poll dimension generation job status — includes accuracy metrics */
   getModel: protectedProcedure
     .input(z.object({ modelId: z.string().uuid() }))
@@ -98,6 +160,7 @@ export const dimensionGenerateRouter = router({
 
       return {
         ...data,
+        sourceImageUrl: data.source_image_url ?? null,
         dimensions: {
           requested: {
             width_mm:  data.width_mm,

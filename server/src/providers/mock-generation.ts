@@ -3,6 +3,8 @@ import type {
   GenerationRequest,
   GenerationPollResult,
   GenerationResult,
+  ImageGenerationProvider,
+  ImageGenerationRequest,
 } from "../types/generation.js";
 
 /**
@@ -76,7 +78,7 @@ function buildBoxStlDataUri(
  * Returns a binary STL box (50mm × 50mm × 50mm) with a short simulated delay.
  * No API key required.
  */
-export class MockGenerationProvider implements GenerationProvider {
+export class MockGenerationProvider implements GenerationProvider, ImageGenerationProvider {
   readonly name = "mock";
 
   async createTask(request: GenerationRequest): Promise<{ providerTaskId: string }> {
@@ -101,6 +103,41 @@ export class MockGenerationProvider implements GenerationProvider {
     opts?: { pollIntervalMs?: number; timeoutMs?: number }
   ): Promise<GenerationResult> {
     // Simulate a brief generation delay so the polling UI flow feels real
+    const delay = Math.min(opts?.pollIntervalMs ?? 2000, 3000);
+    await new Promise((res) => setTimeout(res, delay));
+
+    return {
+      providerTaskId,
+      status: "succeeded",
+      modelUrl: buildBoxStlDataUri(50, 50, 50),
+      thumbnailUrl: null,
+      format: "stl",
+    };
+  }
+
+  // ---- Image-to-3D mock methods ----
+
+  async createImageTask(request: ImageGenerationRequest): Promise<{ providerTaskId: string }> {
+    console.log(`[MockProvider] Received image-to-3D request: "${request.imageUrl}"`);
+    const taskId = `mock-img-${Date.now()}`;
+    return { providerTaskId: taskId };
+  }
+
+  async pollImageTask(providerTaskId: string): Promise<GenerationPollResult> {
+    return {
+      providerTaskId,
+      status: "succeeded",
+      progress: 100,
+      modelUrl: buildBoxStlDataUri(50, 50, 50),
+      thumbnailUrl: null,
+      format: "stl",
+    };
+  }
+
+  async waitForImageCompletion(
+    providerTaskId: string,
+    opts?: { pollIntervalMs?: number; timeoutMs?: number }
+  ): Promise<GenerationResult> {
     const delay = Math.min(opts?.pollIntervalMs ?? 2000, 3000);
     await new Promise((res) => setTimeout(res, delay));
 

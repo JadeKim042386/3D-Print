@@ -144,6 +144,24 @@
     "madePublic": "모델이 공개되었습니다",
     "madePrivate": "모델이 비공개로 변경되었습니다"
   },
+  "modeToggle": {
+    "text": "텍스트로 생성",
+    "image": "이미지로 생성"
+  },
+  "imageUpload": {
+    "dropHint": "이미지를 드래그하거나 클릭하여 업로드",
+    "formats": "JPEG, PNG, WebP (최대 10MB)",
+    "preview": "미리보기",
+    "width": "가로",
+    "height": "높이",
+    "depth": "깊이",
+    "submit": "3D 모델 생성",
+    "generating": "이미지에서 모델 생성 중...",
+    "invalidType": "지원하지 않는 파일 형식입니다. JPEG, PNG, WebP만 가능합니다.",
+    "tooLarge": "파일 크기가 10MB를 초과합니다.",
+    "invalidDimensions": "치수는 1~2000mm 사이로 입력해주세요.",
+    "referenceLabel": "참조 이미지"
+  },
   "order": {
     "title": "주문 확인",
     "summary": "주문 요약",

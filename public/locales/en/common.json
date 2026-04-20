@@ -144,6 +144,24 @@
     "madePublic": "Model is now public",
     "madePrivate": "Model is now private"
   },
+  "modeToggle": {
+    "text": "Text to 3D",
+    "image": "Image to 3D"
+  },
+  "imageUpload": {
+    "dropHint": "Drag an image or click to upload",
+    "formats": "JPEG, PNG, WebP (max 10MB)",
+    "preview": "Preview",
+    "width": "Width",
+    "height": "Height",
+    "depth": "Depth",
+    "submit": "Generate 3D Model",
+    "generating": "Generating model from image...",
+    "invalidType": "Unsupported file type. Only JPEG, PNG, and WebP are allowed.",
+    "tooLarge": "File size exceeds 10MB.",
+    "invalidDimensions": "Dimensions must be between 1 and 2000mm.",
+    "referenceLabel": "Reference image"
+  },
   "order": {
     "title": "Order Confirmation",
     "summary": "Order Summary",

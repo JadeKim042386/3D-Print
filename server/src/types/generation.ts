@@ -89,3 +89,26 @@ export interface GenerationProvider {
     opts?: { pollIntervalMs?: number; timeoutMs?: number }
   ): Promise<GenerationResult>;
 }
+
+/** Request to create a 3D model from a reference image */
+export interface ImageGenerationRequest {
+  imageUrl: string;
+}
+
+/**
+ * Extended provider interface for image-to-3D generation.
+ * Providers that support this should implement both interfaces.
+ */
+export interface ImageGenerationProvider {
+  /** Start an image-to-3D generation task */
+  createImageTask(request: ImageGenerationRequest): Promise<{ providerTaskId: string }>;
+
+  /** Poll for image-to-3D task status */
+  pollImageTask(providerTaskId: string): Promise<GenerationPollResult>;
+
+  /** Poll image-to-3D task until terminal state */
+  waitForImageCompletion(
+    providerTaskId: string,
+    opts?: { pollIntervalMs?: number; timeoutMs?: number }
+  ): Promise<GenerationResult>;
+}

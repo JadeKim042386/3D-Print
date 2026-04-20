@@ -190,6 +190,17 @@ export default function ModelPage() {
         <GenerationProgress />
       ) : model.status === "ready" && model.stlUrl ? (
         <div className="flex flex-col gap-4">
+          {/* Reference image alongside 3D model */}
+          {model.sourceImageUrl && (
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+              <p className="text-xs text-gray-500 mb-2">{t("imageUpload.referenceLabel")}</p>
+              <img
+                src={model.sourceImageUrl}
+                alt={t("imageUpload.referenceLabel")}
+                className="w-full max-h-[200px] object-contain rounded-lg"
+              />
+            </div>
+          )}
           <ModelViewer stlUrl={model.stlUrl} />
 
           <div className="flex items-center justify-between">

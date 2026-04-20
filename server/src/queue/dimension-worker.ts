@@ -17,7 +17,7 @@
 import { Worker, type ConnectionOptions } from "bullmq";
 import * as Sentry from "@sentry/node";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { GenerationProvider } from "../types/generation.js";
+import type { GenerationProvider, ImageGenerationProvider } from "../types/generation.js";
 import { classifyShape } from "../lib/shape-classifier.js";
 import { generateParametricStl } from "../lib/parametric-generator.js";
 import { buildDimensionAwarePrompt } from "../lib/dimension-prompt.js";
@@ -32,8 +32,8 @@ import {
 
 export interface DimensionWorkerDeps {
   connection: ConnectionOptions;
-  /** AI provider used for dimension_aware_ai path (Meshy or mock) */
-  aiProvider: GenerationProvider;
+  /** AI provider used for dimension_aware_ai and image_to_3d paths (Meshy or mock) */
+  aiProvider: GenerationProvider & ImageGenerationProvider;
   supabase: SupabaseClient;
   bucket: string;
 }
@@ -54,7 +54,7 @@ export function createDimensionWorker(
       let modelBuffer: Buffer;
       let modelFormat: string;
       let providerJobId: string;
-      let generationType: "parametric" | "dimension_aware_ai";
+      let generationType: "parametric" | "dimension_aware_ai" | "image_to_3d";
 
       const refit = job.data.refit;
 
@@ -94,6 +94,39 @@ export function createDimensionWorker(
           providerJobId = `refit-ai-${refit.sourceModelId}-${Date.now()}`;
           generationType = "dimension_aware_ai";
         }
+
+        await job.updateProgress(70);
+      } else if (job.data.imageSource) {
+        // ================================================================
+        // IMAGE-TO-3D PATH — generate from reference image with dimensions
+        // ================================================================
+        const { imageUrl } = job.data.imageSource;
+
+        console.log(
+          `[dimension-worker] Image-to-3D: "${imageUrl}" ` +
+          `(${dimensions.width_mm}×${dimensions.height_mm}×${dimensions.depth_mm}mm)`
+        );
+
+        const { providerTaskId } = await aiProvider.createImageTask({ imageUrl });
+        providerJobId = providerTaskId;
+        await job.updateProgress(20);
+
+        const result = await aiProvider.waitForImageCompletion(providerTaskId, {
+          pollIntervalMs: 5000,
+          timeoutMs: 600_000,
+        });
+        await job.updateProgress(60);
+
+        if (!result.modelUrl) throw new Error("AI provider returned no model URL for image-to-3D");
+
+        const scaleFormat = (result.format === "glb" || result.format === "stl")
+          ? result.format
+          : "glb";
+
+        const scaled = await scaleMeshToDimensions(result.modelUrl, dimensions, scaleFormat);
+        modelBuffer = scaled.buffer;
+        modelFormat = scaleFormat;
+        generationType = "image_to_3d";
 
         await job.updateProgress(70);
       } else {
@@ -187,7 +220,7 @@ export function createDimensionWorker(
       // ------------------------------------------------------------------
       // Step 4: Persist result
       // ------------------------------------------------------------------
-      await supabase.from("models").update({
+      const updateData: Record<string, unknown> = {
         status:                   "ready",
         file_url:                 storageUrl,
         provider_task_id:         providerJobId,
@@ -202,7 +235,13 @@ export function createDimensionWorker(
         actual_height_mm:         validation.actual.height_mm,
         actual_depth_mm:          validation.actual.depth_mm,
         dimensional_accuracy_pct: validation.accuracy_pct,
-      }).eq("id", modelId);
+      };
+
+      if (job.data.imageSource) {
+        updateData.source_image_url = job.data.imageSource.imageUrl;
+      }
+
+      await supabase.from("models").update(updateData).eq("id", modelId);
 
       await job.updateProgress(100);
 
