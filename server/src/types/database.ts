@@ -114,10 +114,21 @@ export type Database = {
       }
       orders: {
         Row: {
+          approved_at: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
           created_at: string
+          customer_email: string | null
+          customer_name: string | null
           id: string
-          model_id: string
+          model_id: string | null
+          order_name: string | null
+          payment_key: string | null
+          payment_method: string | null
+          payment_provider: string | null
+          payment_status: string | null
           print_provider: string | null
+          receipt_url: string | null
           shipping_address: Json | null
           status: string
           total_price_krw: number | null
@@ -125,10 +136,21 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          approved_at?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
           created_at?: string
+          customer_email?: string | null
+          customer_name?: string | null
           id?: string
-          model_id: string
+          model_id?: string | null
+          order_name?: string | null
+          payment_key?: string | null
+          payment_method?: string | null
+          payment_provider?: string | null
+          payment_status?: string | null
           print_provider?: string | null
+          receipt_url?: string | null
           shipping_address?: Json | null
           status?: string
           total_price_krw?: number | null
@@ -136,10 +158,21 @@ export type Database = {
           user_id: string
         }
         Update: {
+          approved_at?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
           created_at?: string
+          customer_email?: string | null
+          customer_name?: string | null
           id?: string
-          model_id?: string
+          model_id?: string | null
+          order_name?: string | null
+          payment_key?: string | null
+          payment_method?: string | null
+          payment_provider?: string | null
+          payment_status?: string | null
           print_provider?: string | null
+          receipt_url?: string | null
           shipping_address?: Json | null
           status?: string
           total_price_krw?: number | null
