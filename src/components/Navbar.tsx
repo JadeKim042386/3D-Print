@@ -5,11 +5,13 @@ import { useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/lib/store";
+import CreditsWidget from "@/components/CreditsWidget";
 import type { User } from "@supabase/supabase-js";
 
 export default function Navbar() {
   const { t, i18n } = useTranslation();
   const [user, setUser] = useState<User | null>(null);
+  const accessToken = useAuthStore((s) => s.accessToken);
   const setAccessToken = useAuthStore((s) => s.setAccessToken);
 
   useEffect(() => {
@@ -43,12 +45,19 @@ export default function Navbar() {
           {t("app.title")}
         </Link>
 
-        <div className="flex shrink-0 items-center gap-2 sm:gap-4">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <Link
             href="/gallery"
             className="text-sm text-gray-600 hover:text-gray-900 min-h-[44px] flex items-center px-2"
           >
             {t("nav.gallery")}
+          </Link>
+
+          <Link
+            href="/pricing"
+            className="text-sm text-gray-600 hover:text-gray-900 min-h-[44px] flex items-center px-2"
+          >
+            {t("nav.pricing")}
           </Link>
 
           <button
@@ -60,6 +69,8 @@ export default function Navbar() {
 
           {user ? (
             <>
+              {accessToken && <CreditsWidget accessToken={accessToken} />}
+
               <Link
                 href="/dashboard"
                 className="text-sm text-gray-600 hover:text-gray-900 min-h-[44px] flex items-center px-2"

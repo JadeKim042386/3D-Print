@@ -1,5 +1,12 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
+export class CreditsExhaustedError extends Error {
+  constructor() {
+    super("Credits exhausted");
+    this.name = "CreditsExhaustedError";
+  }
+}
+
 export interface GenerateRequest {
   prompt: string;
 }
@@ -93,6 +100,10 @@ export async function generateModel(
     },
     body: JSON.stringify(data),
   });
+
+  if (res.status === 402) {
+    throw new CreditsExhaustedError();
+  }
 
   if (!res.ok) {
     throw new Error(`Generate failed: ${res.status}`);
@@ -365,5 +376,104 @@ export async function updateModelVisibility(
     throw new Error(`Update visibility failed: ${res.status}`);
   }
 
+  return res.json();
+}
+
+// --- Credits & Subscription Types ---
+
+export type SubscriptionPlan = "free" | "pro" | "business";
+export type SubscriptionStatus = "active" | "cancelled" | "expired";
+
+export interface CreditsBalance {
+  used: number;
+  total: number;
+  remaining: number;
+  plan: SubscriptionPlan;
+  resetAt: string;
+}
+
+export interface SubscriptionInfo {
+  plan: SubscriptionPlan;
+  status: SubscriptionStatus;
+  currentPeriodStart: string;
+  currentPeriodEnd: string;
+  cancelAtPeriodEnd: boolean;
+  tossCustomerId: string | null;
+}
+
+export interface GenerationHistoryEntry {
+  id: string;
+  prompt: string | null;
+  sourceImageUrl: string | null;
+  status: "pending" | "processing" | "ready" | "error";
+  creditsUsed: number;
+  createdAt: string;
+}
+
+export interface GenerationHistoryResponse {
+  generations: GenerationHistoryEntry[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface CheckoutSessionResponse {
+  checkoutUrl: string;
+  orderId: string;
+}
+
+// --- Credits & Subscription API ---
+
+export async function getCreditsBalance(token: string): Promise<CreditsBalance> {
+  const res = await fetch(`${API_BASE_URL}/credits/balance`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Get credits failed: ${res.status}`);
+  return res.json();
+}
+
+export async function getSubscription(token: string): Promise<SubscriptionInfo | null> {
+  const res = await fetch(`${API_BASE_URL}/subscription`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Get subscription failed: ${res.status}`);
+  return res.json();
+}
+
+export async function createCheckoutSession(
+  plan: Exclude<SubscriptionPlan, "free">,
+  token: string
+): Promise<CheckoutSessionResponse> {
+  const res = await fetch(`${API_BASE_URL}/subscription/checkout`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ plan }),
+  });
+  if (!res.ok) throw new Error(`Checkout failed: ${res.status}`);
+  return res.json();
+}
+
+export async function cancelSubscription(token: string): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/subscription/cancel`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Cancel subscription failed: ${res.status}`);
+}
+
+export async function listGenerationHistory(
+  token: string,
+  page: number = 1,
+  pageSize: number = 20
+): Promise<GenerationHistoryResponse> {
+  const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+  const res = await fetch(`${API_BASE_URL}/generations?${params}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`List history failed: ${res.status}`);
   return res.json();
 }
