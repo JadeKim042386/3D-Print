@@ -83,6 +83,14 @@ export class MeshyProvider implements GenerationProvider, ImageGenerationProvide
     const data = (await res.json()) as MeshyTaskResponse;
     const format: OutputFormat = "glb";
 
+    // Collect all available format URLs from the provider
+    const allModelUrls: Record<string, string> = {};
+    if (data.model_urls) {
+      for (const [fmt, url] of Object.entries(data.model_urls)) {
+        if (url) allModelUrls[fmt] = url;
+      }
+    }
+
     return {
       providerTaskId: data.id,
       status: STATUS_MAP[data.status] ?? "pending",
@@ -90,6 +98,7 @@ export class MeshyProvider implements GenerationProvider, ImageGenerationProvide
       modelUrl: data.model_urls?.glb ?? null,
       thumbnailUrl: data.thumbnail_url ?? null,
       format,
+      allModelUrls: Object.keys(allModelUrls).length > 0 ? allModelUrls : undefined,
     };
   }
 
@@ -111,6 +120,7 @@ export class MeshyProvider implements GenerationProvider, ImageGenerationProvide
           modelUrl: result.modelUrl,
           thumbnailUrl: result.thumbnailUrl,
           format: result.format,
+          allModelUrls: result.allModelUrls,
         };
       }
 
@@ -171,6 +181,13 @@ export class MeshyProvider implements GenerationProvider, ImageGenerationProvide
     const data = (await res.json()) as MeshyTaskResponse;
     const format: OutputFormat = "glb";
 
+    const allModelUrls: Record<string, string> = {};
+    if (data.model_urls) {
+      for (const [fmt, url] of Object.entries(data.model_urls)) {
+        if (url) allModelUrls[fmt] = url;
+      }
+    }
+
     return {
       providerTaskId: data.id,
       status: STATUS_MAP[data.status] ?? "pending",
@@ -178,6 +195,7 @@ export class MeshyProvider implements GenerationProvider, ImageGenerationProvide
       modelUrl: data.model_urls?.glb ?? null,
       thumbnailUrl: data.thumbnail_url ?? null,
       format,
+      allModelUrls: Object.keys(allModelUrls).length > 0 ? allModelUrls : undefined,
     };
   }
 
@@ -199,6 +217,7 @@ export class MeshyProvider implements GenerationProvider, ImageGenerationProvide
           modelUrl: result.modelUrl,
           thumbnailUrl: result.thumbnailUrl,
           format: result.format,
+          allModelUrls: result.allModelUrls,
         };
       }
 

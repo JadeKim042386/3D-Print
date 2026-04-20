@@ -201,7 +201,7 @@ export default function ModelPage() {
               />
             </div>
           )}
-          <ModelViewer stlUrl={model.stlUrl} />
+          <ModelViewer stlUrl={model.stlUrl} modelId={model.id} token={accessToken} />
 
           {/* Mesh quality info */}
           {model.meshQuality && (

@@ -90,6 +90,9 @@ export type Database = {
           printability_score: number | null
           mesh_volume_mm3: number | null
           mesh_surface_area_mm2: number | null
+          // Print-readiness fields (migration 010)
+          print_quality_score: number | null
+          print_ready: boolean | null
         }
         Insert: {
           created_at?: string
@@ -120,6 +123,8 @@ export type Database = {
           printability_score?: number | null
           mesh_volume_mm3?: number | null
           mesh_surface_area_mm2?: number | null
+          print_quality_score?: number | null
+          print_ready?: boolean | null
         }
         Update: {
           created_at?: string
@@ -150,6 +155,8 @@ export type Database = {
           printability_score?: number | null
           mesh_volume_mm3?: number | null
           mesh_surface_area_mm2?: number | null
+          print_quality_score?: number | null
+          print_ready?: boolean | null
         }
         Relationships: [
           {

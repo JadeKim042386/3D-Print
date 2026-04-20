@@ -6,6 +6,7 @@ import { generateRouter } from "./generate.js";
 import { dimensionGenerateRouter } from "./dimension-generate.js";
 import { adminRouter } from "./admin.js";
 import { billingRouter } from "./billing.js";
+import { exportRouter } from "./export.js";
 import type { PaymentProvider } from "../types/payment.js";
 import type { PrintProvider } from "../types/print.js";
 import { createPaymentsRouter } from "./payments.js";
@@ -25,6 +26,7 @@ export function createAppRouter(
     print:            createPrintRouter(printProviders),
     admin:            adminRouter,
     billing:          billingRouter,
+    export:           exportRouter,
   });
 }
 
@@ -39,6 +41,7 @@ export const appRouter = router({
   print:            createPrintRouter([]),
   admin:            adminRouter,
   billing:          billingRouter,
+  export:           exportRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -9,6 +9,7 @@ import { loadConfig } from "./config.js";
 import { initSentry, Sentry } from "./lib/sentry.js";
 import { createGenerationQueue } from "./queue/generation-queue.js";
 import { createDimensionQueue } from "./queue/dimension-queue.js";
+import { createExportQueue } from "./queue/export-queue.js";
 import { createContextFactory } from "./trpc/context.js";
 import { createAppRouter, type AppRouter } from "./routes/app-router.js";
 import { TossPaymentsProvider } from "./providers/toss-payments.js";
@@ -110,6 +111,7 @@ async function main() {
 
   const generationQueue  = redisConnected ? createGenerationQueue(redis)  : null;
   const dimensionQueue   = redisConnected ? createDimensionQueue(redis)   : null;
+  const exportQueue      = redisConnected ? createExportQueue(redis)      : null;
   const paymentProvider  = createPaymentProvider(config);
   const printProviders   = createPrintProviders(config);
 
@@ -119,6 +121,7 @@ async function main() {
     supabaseAnonKey:   config.SUPABASE_ANON_KEY,
     generationQueue,
     dimensionQueue,
+    exportQueue,
   });
 
   const appRouter = createAppRouter(paymentProvider, printProviders);
@@ -485,6 +488,93 @@ async function main() {
     const { data } = await db.from("orders").select("*")
       .eq("user_id", user.id).order("created_at", { ascending: false });
     return data ?? [];
+  });
+
+  // ── Model Export REST endpoints ───────────────────────────────────────────
+  server.post<{
+    Params: { id: string };
+    Body: { format: string };
+  }>("/models/:id/export", async (request, reply) => {
+    const user = getUser(request.headers.authorization);
+    if (!user) return reply.code(401).send({ error: "Unauthorized" });
+
+    const validFormats = ["stl", "obj", "glb", "gltf", "3mf"] as const;
+    type ValidFormat = typeof validFormats[number];
+    const rawFormat = request.body?.format;
+    if (!rawFormat || !validFormats.includes(rawFormat as ValidFormat)) {
+      return reply.code(400).send({ error: "Invalid format. Supported: stl, obj, glb, gltf, 3mf" });
+    }
+    const format = rawFormat as ValidFormat;
+
+    const { data: model } = await db.from("models").select("id, file_url, format, user_id, status")
+      .eq("id", request.params.id).eq("user_id", user.id).single();
+
+    if (!model) return reply.code(404).send({ error: "Model not found" });
+    if (model.status !== "ready" || !model.file_url) {
+      return reply.code(400).send({ error: "Model not ready" });
+    }
+
+    const sourceFormat = (model.format ?? "glb") as "stl" | "glb";
+
+    // Same format: return original
+    if (format === sourceFormat || (format === "gltf" && sourceFormat === "glb")) {
+      return { status: "ready", format, fileUrl: model.file_url };
+    }
+
+    // Check existing export
+    const { data: existing } = await db.from("model_exports")
+      .select("id, status, file_url")
+      .eq("model_id", model.id).eq("format", format).single();
+
+    if (existing) {
+      return { exportId: existing.id, status: existing.status, format, fileUrl: existing.file_url };
+    }
+
+    // Create new export
+    const { data: exportRecord, error: insertError } = await db.from("model_exports")
+      .insert({ model_id: model.id, format, status: "pending" })
+      .select("id").single();
+
+    if (insertError || !exportRecord) {
+      return reply.code(500).send({ error: insertError?.message ?? "Export creation failed" });
+    }
+
+    if (!exportQueue) {
+      return reply.code(503).send({ error: "Export queue unavailable" });
+    }
+
+    await exportQueue.add("format-convert", {
+      exportId: exportRecord.id,
+      modelId: model.id,
+      sourceFileUrl: model.file_url,
+      sourceFormat,
+      targetFormat: format as "stl" | "obj" | "glb" | "gltf" | "3mf",
+    });
+
+    return { exportId: exportRecord.id, status: "pending", format, fileUrl: null };
+  });
+
+  server.get<{
+    Params: { id: string };
+  }>("/models/:id/exports", async (request, reply) => {
+    const user = getUser(request.headers.authorization);
+    if (!user) return reply.code(401).send({ error: "Unauthorized" });
+
+    const { data: model } = await db.from("models").select("id, file_url, format, user_id")
+      .eq("id", request.params.id).eq("user_id", user.id).single();
+
+    if (!model) return reply.code(404).send({ error: "Model not found" });
+
+    const { data: exports } = await db.from("model_exports")
+      .select("id, format, status, file_url, file_size_bytes")
+      .eq("model_id", model.id).order("created_at", { ascending: true });
+
+    return {
+      modelId: model.id,
+      sourceFormat: model.format ?? "glb",
+      sourceFileUrl: model.file_url,
+      exports: exports ?? [],
+    };
   });
   // ────────────────────────────────────────────────────────────────────────────
 

@@ -58,6 +58,8 @@ export interface GenerationResult {
   modelUrl: string | null;
   thumbnailUrl: string | null;
   format: OutputFormat;
+  /** All available format URLs from the provider (e.g. Meshy returns glb, obj, stl, fbx) */
+  allModelUrls?: Record<string, string>;
 }
 
 /** Polling result for an in-progress task */
@@ -68,6 +70,8 @@ export interface GenerationPollResult {
   modelUrl: string | null;
   thumbnailUrl: string | null;
   format: OutputFormat;
+  /** All available format URLs from the provider */
+  allModelUrls?: Record<string, string>;
 }
 
 /**

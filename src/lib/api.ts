@@ -379,6 +379,59 @@ export async function updateModelVisibility(
   return res.json();
 }
 
+// --- Model Export Types ---
+
+export type ExportFormat = "stl" | "obj" | "glb" | "gltf" | "3mf";
+export type ExportStatus = "pending" | "converting" | "ready" | "failed";
+
+export interface ExportRequestResponse {
+  exportId: string | null;
+  status: ExportStatus;
+  format: ExportFormat;
+  fileUrl: string | null;
+}
+
+export interface ModelExportsResponse {
+  modelId: string;
+  sourceFormat: string;
+  sourceFileUrl: string | null;
+  exports: Array<{
+    id: string;
+    format: string;
+    status: string;
+    file_url: string | null;
+    file_size_bytes: number | null;
+  }>;
+}
+
+export async function requestModelExport(
+  modelId: string,
+  format: ExportFormat,
+  token: string
+): Promise<ExportRequestResponse> {
+  const res = await fetch(`${API_BASE_URL}/models/${modelId}/export`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ format }),
+  });
+  if (!res.ok) throw new Error(`Export request failed: ${res.status}`);
+  return res.json();
+}
+
+export async function getModelExports(
+  modelId: string,
+  token: string
+): Promise<ModelExportsResponse> {
+  const res = await fetch(`${API_BASE_URL}/models/${modelId}/exports`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Get exports failed: ${res.status}`);
+  return res.json();
+}
+
 // --- Credits & Subscription Types ---
 
 export type SubscriptionPlan = "free" | "pro" | "business";

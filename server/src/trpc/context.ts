@@ -10,6 +10,10 @@ import type {
   DimensionJobData,
   DimensionJobResult,
 } from "../queue/dimension-queue.js";
+import type {
+  ExportJobData,
+  ExportJobResult,
+} from "../queue/export-queue.js";
 
 export interface AppContext {
   supabase: SupabaseClient<Database>;
@@ -17,6 +21,8 @@ export interface AppContext {
   generationQueue: Queue<GenerationJobData, GenerationJobResult> | null;
   /** Dimension-based generation queue (separate service) */
   dimensionQueue: Queue<DimensionJobData, DimensionJobResult> | null;
+  /** Model format export queue */
+  exportQueue: Queue<ExportJobData, ExportJobResult> | null;
   user: { id: string; email: string } | null;
 }
 
@@ -26,6 +32,7 @@ export interface CreateContextDeps {
   supabaseAnonKey: string;
   generationQueue: Queue<GenerationJobData, GenerationJobResult> | null;
   dimensionQueue: Queue<DimensionJobData, DimensionJobResult> | null;
+  exportQueue: Queue<ExportJobData, ExportJobResult> | null;
 }
 
 export function createContextFactory(deps: CreateContextDeps) {
@@ -58,6 +65,7 @@ export function createContextFactory(deps: CreateContextDeps) {
       supabase:         serviceClient,
       generationQueue:  deps.generationQueue,
       dimensionQueue:   deps.dimensionQueue,
+      exportQueue:      deps.exportQueue,
       user,
     };
   };
