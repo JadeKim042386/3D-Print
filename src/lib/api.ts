@@ -512,6 +512,22 @@ export async function createCheckoutSession(
   return res.json();
 }
 
+export async function createCreditTopupSession(
+  credits: number,
+  token: string
+): Promise<CheckoutSessionResponse> {
+  const res = await fetch(`${API_BASE_URL}/credits/topup`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ credits }),
+  });
+  if (!res.ok) throw new Error(`Topup checkout failed: ${res.status}`);
+  return res.json();
+}
+
 export async function cancelSubscription(token: string): Promise<void> {
   const res = await fetch(`${API_BASE_URL}/subscription/cancel`, {
     method: "POST",

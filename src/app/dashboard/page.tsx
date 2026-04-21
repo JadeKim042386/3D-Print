@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/lib/store";
 import { listModels, type ModelResponse } from "@/lib/api";
+import CreditBanner from "@/components/CreditBanner";
 
 function StatusBadge({ status }: { status: ModelResponse["status"] }) {
   const { t } = useTranslation();
@@ -120,6 +121,8 @@ export default function DashboardPage() {
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
+      {accessToken && <CreditBanner accessToken={accessToken} />}
+
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">
           {t("dashboard.modelsTitle")}

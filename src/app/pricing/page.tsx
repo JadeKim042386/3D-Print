@@ -5,11 +5,14 @@ import { useAuthStore } from "@/lib/store";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { getCreditsBalance, getSubscription, createCheckoutSession, type SubscriptionPlan } from "@/lib/api";
 import Link from "next/link";
+import { useState } from "react";
+import { analytics } from "@/lib/analytics";
 
 const PLANS: Array<{
   id: SubscriptionPlan;
   priceKey: string;
   creditsKey: string;
+  estimateKey: string;
   features: string[];
   highlight: boolean;
 }> = [
@@ -17,6 +20,7 @@ const PLANS: Array<{
     id: "free",
     priceKey: "pricing.freePriceKrw",
     creditsKey: "pricing.freeCredits",
+    estimateKey: "pricing.freeEstimate",
     features: ["feature_3d_gen", "feature_viewer", "feature_history"],
     highlight: false,
   },
@@ -24,6 +28,7 @@ const PLANS: Array<{
     id: "pro",
     priceKey: "pricing.proPriceKrw",
     creditsKey: "pricing.proCredits",
+    estimateKey: "pricing.proEstimate",
     features: ["feature_3d_gen", "feature_viewer", "feature_history", "feature_print", "feature_priority", "feature_watermark"],
     highlight: true,
   },
@@ -31,10 +36,41 @@ const PLANS: Array<{
     id: "business",
     priceKey: "pricing.businessPriceKrw",
     creditsKey: "pricing.businessCredits",
+    estimateKey: "pricing.businessEstimate",
     features: ["feature_3d_gen", "feature_viewer", "feature_history", "feature_print", "feature_priority", "feature_watermark", "feature_api", "feature_support"],
     highlight: false,
   },
 ];
+
+function FeatureTooltip({ featureKey }: { featureKey: string }) {
+  const { t } = useTranslation();
+  const [show, setShow] = useState(false);
+  const tooltipKey = `pricing.${featureKey}_tip`;
+  const tip = t(tooltipKey);
+  if (tip === tooltipKey) return null;
+
+  return (
+    <span className="relative inline-block ml-1">
+      <button
+        type="button"
+        className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-gray-200 text-[10px] text-gray-500 hover:bg-gray-300"
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+        onFocus={() => setShow(true)}
+        onBlur={() => setShow(false)}
+        aria-label={tip}
+      >
+        ?
+      </button>
+      {show && (
+        <span className="absolute bottom-full left-1/2 z-10 mb-1.5 w-48 -translate-x-1/2 rounded-lg bg-gray-900 px-3 py-2 text-xs text-white shadow-lg">
+          {tip}
+          <span className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+        </span>
+      )}
+    </span>
+  );
+}
 
 export default function PricingPage() {
   const { t } = useTranslation();
@@ -70,6 +106,7 @@ export default function PricingPage() {
       return;
     }
     if (planId === "free") return;
+    analytics.planUpgradeClicked(planId);
     checkoutMutation.mutate(planId as Exclude<SubscriptionPlan, "free">);
   };
 
@@ -115,13 +152,15 @@ export default function PricingPage() {
                   )}
                 </div>
                 <p className="mt-1 text-sm text-blue-600 font-medium">{t(plan.creditsKey)}</p>
+                <p className="mt-0.5 text-xs text-gray-500">{t(plan.estimateKey)}</p>
               </div>
 
               <ul className="mb-6 flex-1 space-y-2">
                 {plan.features.map((feat) => (
                   <li key={feat} className="flex items-center gap-2 text-sm text-gray-700">
-                    <span className="text-green-500">✓</span>
+                    <span className="text-green-500">&#x2713;</span>
                     {t(`pricing.${feat}`)}
+                    <FeatureTooltip featureKey={feat} />
                   </li>
                 ))}
               </ul>

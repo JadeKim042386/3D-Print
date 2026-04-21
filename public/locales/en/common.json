@@ -100,23 +100,41 @@
     "providersFound": " providers found"
   },
   "landing": {
-    "hero": "Imagination to Reality, AI 3D Printing",
-    "subtitle": "Generate 3D models from text and get them printed by the best providers — all in one place",
+    "badge": "AI 3D Model Generation · 3D Print Brokerage",
+    "hero": "AI 3D Printing from a Single Line of Text",
+    "subtitle": "Generate 3D models with AI and get them printed — all in one place.",
     "cta": "Get Started Free",
     "ctaLogin": "Log In to Start",
+    "viewGallery": "View Gallery",
+    "viewAll": "View All",
+    "viewAllModels": "All Models",
+    "statModels": "AI-generated 3D Models",
+    "statProviders": "Partner Print Providers",
+    "statAI": "AI-automated",
+    "recentModelsTitle": "Recently Generated Models",
+    "featuresTitle": "Why Choose Us?",
     "feature1Title": "AI 3D Model Generation",
     "feature1Desc": "Just type what you want and AI will automatically generate a high-quality 3D model",
     "feature2Title": "Real-time 3D Viewer",
     "feature2Desc": "View your generated model in 360° directly in the browser",
     "feature3Title": "3D Print Quote Comparison",
-    "feature3Desc": "Compare prices and delivery times from multiple print providers at a glance",
+    "feature3Desc": "Compare prices and delivery times from multiple 3D print providers at a glance",
     "howItWorksTitle": "It's This Simple",
     "step1": "Describe Your Model",
     "step1Desc": "Freely describe the 3D model you want to create",
     "step2": "AI Generates 3D Model",
     "step2Desc": "AI analyzes your text and generates a high-quality 3D model",
     "step3": "Order a Print",
-    "step3Desc": "Choose your preferred provider and order a print right away"
+    "step3Desc": "Choose your preferred 3D print provider and order right away",
+    "pricingTitle": "Simple, Transparent Pricing",
+    "pricingSubtitle": "Start for free and upgrade when you need more",
+    "pricingCredits": "Monthly Credits",
+    "pricingPriority": "Priority Processing",
+    "pricingWatermark": "No Watermark",
+    "pricingAPI": "API Access",
+    "viewFullPricing": "View Full Pricing",
+    "finalCtaTitle": "Start Creating Today",
+    "finalCtaSubtitle": "Try AI 3D model generation for free — no credit card required"
   },
   "error": {
     "pageTitle": "Something went wrong",
@@ -243,7 +261,8 @@
     "upgrade": "Upgrade",
     "upgradeLater": "Later",
     "perMonth": "/mo",
-    "creditsPerMonth": "credits/mo"
+    "creditsPerMonth": "credits/mo",
+    "topupTitle": "Or buy credits one-time"
   },
   "pricing": {
     "title": "Pricing",
@@ -281,7 +300,14 @@
     "startFree": "Start Free",
     "loginRequired": "Login required",
     "checkoutTitle": "Checkout",
-    "checkoutDesc": "Secure payment via Toss Payments"
+    "checkoutDesc": "Secure payment via Toss Payments",
+    "freeEstimate": "~10 generations/mo",
+    "proEstimate": "~100 generations/mo",
+    "businessEstimate": "~500 generations/mo",
+    "feature_priority_tip": "Your models are generated before free-tier users",
+    "feature_api_tip": "Programmatic access to generate 3D models via REST API",
+    "feature_support_tip": "Dedicated email support with priority response times",
+    "feature_watermark_tip": "Export and share models without watermarks"
   },
   "subscription": {
     "title": "Subscription",
@@ -358,5 +384,13 @@
     "trackOrder": "Track Order",
     "confirmTitle": "Order Complete",
     "confirmDescription": "Your order has been successfully placed"
+  },
+  "upgradeSuccess": {
+    "title": "Welcome to your new plan!",
+    "description": "Your subscription has been activated. Start creating amazing 3D models right away.",
+    "creditsReady": "Your credits are ready",
+    "tip": "Tip: Your credits are ready — try generating your first model!",
+    "startGenerating": "Start Generating",
+    "goToDashboard": "Go to Dashboard"
   }
 }
