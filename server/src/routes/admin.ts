@@ -133,7 +133,7 @@ export const adminRouter = router({
         .from("orders")
         .update(updateData)
         .eq("id", input.orderId)
-        .select("id, status")
+        .select("id, status, user_id, total_price_krw, customer_email")
         .single();
 
       if (error || !data) {
@@ -143,7 +143,38 @@ export const adminRouter = router({
         });
       }
 
-      return data;
+      // Send order-confirmed email (fire-and-forget)
+      if (input.status === "confirmed" && ctx.mailer) {
+        const mailer = ctx.mailer;
+        const recipientEmail = data.customer_email ?? null;
+        const userId = data.user_id;
+
+        void (async () => {
+          let email: string | null = recipientEmail;
+          let displayName: string | undefined;
+
+          if (!email && userId) {
+            const { data: user } = await ctx.supabase
+              .from("users")
+              .select("email, display_name")
+              .eq("id", userId)
+              .single();
+            email = user?.email ?? null;
+            displayName = user?.display_name ?? undefined;
+          }
+
+          if (email) {
+            void mailer.sendOrderConfirmed({
+              to: email,
+              orderId: data.id,
+              totalKrw: data.total_price_krw ?? undefined,
+              displayName,
+            });
+          }
+        })();
+      }
+
+      return { id: data.id, status: data.status };
     }),
 
   /** Update print order status (admin override) */
@@ -167,7 +198,7 @@ export const adminRouter = router({
         .from("print_orders")
         .update(updateData)
         .eq("id", input.printOrderId)
-        .select("id, status")
+        .select("id, status, user_id, customer_email, tracking_number, tracking_url")
         .single();
 
       if (error || !data) {
@@ -177,7 +208,39 @@ export const adminRouter = router({
         });
       }
 
-      return data;
+      // Send print-order-shipped email (fire-and-forget)
+      if (input.status === "shipped" && ctx.mailer) {
+        const mailer = ctx.mailer;
+        const recipientEmail = data.customer_email ?? null;
+        const userId = data.user_id;
+
+        void (async () => {
+          let email: string | null = recipientEmail;
+          let displayName: string | undefined;
+
+          if (!email && userId) {
+            const { data: user } = await ctx.supabase
+              .from("users")
+              .select("email, display_name")
+              .eq("id", userId)
+              .single();
+            email = user?.email ?? null;
+            displayName = user?.display_name ?? undefined;
+          }
+
+          if (email) {
+            void mailer.sendPrintOrderShipped({
+              to: email,
+              orderId: data.id,
+              trackingNumber: data.tracking_number ?? undefined,
+              trackingUrl: data.tracking_url ?? undefined,
+              displayName,
+            });
+          }
+        })();
+      }
+
+      return { id: data.id, status: data.status };
     }),
 
   /** List all users */
@@ -402,6 +465,107 @@ export const adminRouter = router({
       }
 
       return data;
+    }),
+
+  /** Conversion funnel analytics — daily stats + live event counts */
+  getFunnelAnalytics: adminProcedure
+    .input(
+      z.object({
+        days: z.number().min(1).max(90).default(30),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const since = new Date();
+      since.setDate(since.getDate() - input.days);
+      const sinceStr = since.toISOString().split("T")[0]!;
+
+      // Daily aggregated stats
+      const { data: dailyStats } = await ctx.supabase
+        .from("analytics_daily")
+        .select("*")
+        .gte("date", sinceStr)
+        .order("date", { ascending: true });
+
+      // Compute funnel from events table directly
+      const sinceTs = since.toISOString();
+
+      const countEvent = async (eventName: string) => {
+        const { count } = await ctx.supabase
+          .from("analytics_events")
+          .select("id", { count: "exact", head: true })
+          .eq("event_name", eventName)
+          .gte("created_at", sinceTs);
+        return count ?? 0;
+      };
+
+      const countUniqueEvent = async (eventName: string) => {
+        const { data } = await ctx.supabase
+          .from("analytics_events")
+          .select("user_id")
+          .eq("event_name", eventName)
+          .gte("created_at", sinceTs)
+          .not("user_id", "is", null);
+        const unique = new Set((data ?? []).map((r) => r.user_id));
+        return unique.size;
+      };
+
+      const [
+        totalSignups,
+        totalGenerations,
+        uniqueGenerators,
+        totalOrders,
+        uniqueOrderers,
+        totalPayments,
+        totalUpgrades,
+      ] = await Promise.all([
+        countEvent("signup_completed"),
+        countEvent("generation_submitted"),
+        countUniqueEvent("generation_submitted"),
+        countEvent("order_placed"),
+        countUniqueEvent("order_placed"),
+        countEvent("payment_completed"),
+        countEvent("plan_upgraded"),
+      ]);
+
+      // Total users for context
+      const { count: totalUsers } = await ctx.supabase
+        .from("users")
+        .select("id", { count: "exact", head: true });
+
+      // Funnel stages
+      const funnel = [
+        { stage: "signups", count: totalSignups, label: "Signups" },
+        { stage: "first_generation", count: uniqueGenerators, label: "First Generation" },
+        { stage: "first_order", count: uniqueOrderers, label: "First Print Order" },
+        { stage: "payment", count: totalPayments, label: "Payment Completed" },
+        { stage: "plan_upgrade", count: totalUpgrades, label: "Plan Upgrade" },
+      ];
+
+      // Conversion rates between stages
+      const conversions = funnel.slice(1).map((stage, i) => {
+        const prev = funnel[i]!;
+        const rate = prev.count > 0 ? (stage.count / prev.count) * 100 : 0;
+        return {
+          from: prev.stage,
+          to: stage.stage,
+          rate: Math.round(rate * 10) / 10,
+        };
+      });
+
+      return {
+        period: { from: sinceStr, days: input.days },
+        funnel,
+        conversions,
+        totals: {
+          users: totalUsers ?? 0,
+          signups: totalSignups,
+          generations: totalGenerations,
+          orders: totalOrders,
+          payments: totalPayments,
+          upgrades: totalUpgrades,
+        },
+        dailyStats: dailyStats ?? [],
+      };
     }),
 
   /** Revenue metrics */

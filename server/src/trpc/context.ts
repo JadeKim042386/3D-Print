@@ -14,6 +14,7 @@ import type {
   ExportJobData,
   ExportJobResult,
 } from "../queue/export-queue.js";
+import type { Mailer } from "../lib/mailer.js";
 
 export interface AppContext {
   supabase: SupabaseClient<Database>;
@@ -24,6 +25,8 @@ export interface AppContext {
   /** Model format export queue */
   exportQueue: Queue<ExportJobData, ExportJobResult> | null;
   user: { id: string; email: string } | null;
+  /** Transactional email service — null when SMTP not configured */
+  mailer: Mailer | null;
 }
 
 export interface CreateContextDeps {
@@ -33,6 +36,7 @@ export interface CreateContextDeps {
   generationQueue: Queue<GenerationJobData, GenerationJobResult> | null;
   dimensionQueue: Queue<DimensionJobData, DimensionJobResult> | null;
   exportQueue: Queue<ExportJobData, ExportJobResult> | null;
+  mailer: Mailer | null;
 }
 
 export function createContextFactory(deps: CreateContextDeps) {
@@ -66,6 +70,7 @@ export function createContextFactory(deps: CreateContextDeps) {
       generationQueue:  deps.generationQueue,
       dimensionQueue:   deps.dimensionQueue,
       exportQueue:      deps.exportQueue,
+      mailer:           deps.mailer,
       user,
     };
   };

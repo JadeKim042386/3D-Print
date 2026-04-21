@@ -6,6 +6,9 @@ import { MeshyProvider } from "./providers/meshy.js";
 import { MockGenerationProvider } from "./providers/mock-generation.js";
 import { createGenerationWorker } from "./queue/generation-worker.js";
 import { createPrintReadinessQueue } from "./queue/print-readiness-queue.js";
+import { createMailer } from "./lib/mailer.js";
+import { createCreditResetWorker, scheduleMonthlyCreditReset, scheduleDailyRenewalCheck } from "./queue/credit-reset-worker.js";
+import { createCreditResetQueue } from "./queue/credit-reset-queue.js";
 
 async function main() {
   const config = loadConfig();
@@ -29,21 +32,36 @@ async function main() {
     : new MockGenerationProvider();
 
   const printReadinessQueue = createPrintReadinessQueue(redis);
+  const creditResetQueue = createCreditResetQueue(redis);
+  const mailer = createMailer(config);
 
-  const worker = createGenerationWorker({
+  const generationWorker = createGenerationWorker({
     connection: redis,
     provider,
     supabase,
     bucket: config.STORAGE_BUCKET,
     printReadinessQueue,
+    mailer,
   });
 
+  const creditResetWorker = createCreditResetWorker({
+    connection: redis,
+    supabase,
+    mailer,
+  });
+
+  // Schedule recurring jobs (idempotent — BullMQ deduplicates by jobId)
+  await scheduleMonthlyCreditReset(creditResetQueue);
+  await scheduleDailyRenewalCheck(creditResetQueue);
+
   console.log(`Generation worker started (provider: ${provider.name})`);
+  console.log("Credit reset worker started (monthly reset + daily renewal check)");
 
   // Graceful shutdown
   const shutdown = async () => {
-    console.log("Shutting down worker...");
-    await worker.close();
+    console.log("Shutting down workers...");
+    await generationWorker.close();
+    await creditResetWorker.close();
     redis.disconnect();
     process.exit(0);
   };

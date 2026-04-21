@@ -20,7 +20,34 @@ export const generateRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       // Enforce credit limit before creating the model record
-      await deductCredit(ctx.supabase, ctx.user.id);
+      const credits = await deductCredit(ctx.supabase, ctx.user.id);
+
+      // Send credit-low warning when balance drops below 20% (fire-and-forget)
+      if (
+        ctx.mailer &&
+        credits.credits_limit > 0 &&
+        credits.credits_limit !== -1
+      ) {
+        const remaining = credits.credits_limit - credits.credits_used;
+        const threshold = Math.ceil(credits.credits_limit * 0.2);
+        if (remaining <= threshold) {
+          const mailer = ctx.mailer;
+          const userEmail = ctx.user.email;
+          void (async () => {
+            const { data: user } = await ctx.supabase
+              .from("users")
+              .select("display_name")
+              .eq("id", ctx.user.id)
+              .single();
+            void mailer.sendCreditLow({
+              to: userEmail,
+              remaining,
+              limit: credits.credits_limit,
+              displayName: user?.display_name ?? undefined,
+            });
+          })();
+        }
+      }
 
       const { data: model, error } = await ctx.supabase
         .from("models")

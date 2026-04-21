@@ -19,6 +19,7 @@ import {
 } from "./generation-queue.js";
 import type { Queue } from "bullmq";
 import type { PrintReadinessJobData, PrintReadinessJobResult } from "./print-readiness-queue.js";
+import type { Mailer } from "../lib/mailer.js";
 
 export interface GenerationWorkerDeps {
   connection: ConnectionOptions;
@@ -27,6 +28,8 @@ export interface GenerationWorkerDeps {
   bucket: string;
   /** Optional: enqueue print-readiness validation after completion */
   printReadinessQueue?: Queue<PrintReadinessJobData, PrintReadinessJobResult>;
+  /** Optional: send transactional emails */
+  mailer?: Mailer | null;
 }
 
 export function createGenerationWorker(
@@ -82,6 +85,32 @@ export function createGenerationWorker(
           fileUrl: storageUrl,
           format: fmt,
         });
+      }
+
+      // Send generation-complete email (fire-and-forget)
+      if (deps.mailer) {
+        const { data: modelRow } = await supabase
+          .from("models")
+          .select("user_id, prompt")
+          .eq("id", modelId)
+          .single();
+
+        if (modelRow) {
+          const { data: user } = await supabase
+            .from("users")
+            .select("email, display_name")
+            .eq("id", modelRow.user_id)
+            .single();
+
+          if (user?.email) {
+            void deps.mailer.sendGenerationComplete({
+              to: user.email,
+              modelId,
+              prompt: modelRow.prompt ?? undefined,
+              displayName: user.display_name ?? undefined,
+            });
+          }
+        }
       }
 
       await job.updateProgress(100);
