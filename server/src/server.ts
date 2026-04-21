@@ -493,6 +493,162 @@ async function main() {
     return data ?? [];
   });
 
+  // POST /orders — create a Toss payment order
+  server.post<{
+    Body: {
+      modelId: string;
+      providerId: string;
+      providerName?: string;
+      materialId: string;
+      materialName?: string;
+      estimatedDays?: number;
+      amount: number;
+      orderName: string;
+      paymentMethod: string;
+    };
+  }>("/orders", async (request, reply) => {
+    const user = getUser(request.headers.authorization);
+    if (!user) return reply.code(401).send({ error: "Unauthorized" });
+
+    const {
+      modelId, providerId, providerName, materialId, materialName,
+      estimatedDays, amount, orderName, paymentMethod,
+    } = request.body;
+
+    if (!modelId || !providerId || !materialId || !amount || !orderName) {
+      return reply.code(400).send({ error: "Missing required fields" });
+    }
+
+    // Verify model belongs to user
+    const { data: model } = await db.from("models")
+      .select("id").eq("id", modelId).eq("user_id", user.id).single();
+    if (!model) return reply.code(404).send({ error: "Model not found" });
+
+    // Create order via payment provider (gets orderId + clientKey)
+    if (!paymentProvider) {
+      return reply.code(503).send({ error: "Payment provider not configured" });
+    }
+    const providerResult = await paymentProvider.createOrder({
+      modelId,
+      amount,
+      orderName,
+      customerName: user.email.split("@")[0]!,
+      customerEmail: user.email,
+    });
+
+    const { data: order, error } = await db.from("orders").insert({
+      user_id: user.id,
+      model_id: modelId,
+      status: "pending",
+      total_price_krw: amount,
+      order_name: orderName,
+      payment_provider: paymentProvider.name,
+      payment_status: "READY",
+      payment_method: paymentMethod,
+      customer_name: user.email.split("@")[0]!,
+      customer_email: user.email,
+      print_provider: providerId,
+      provider_name: providerName ?? providerId,
+      material_id: materialId,
+      material_name: materialName ?? materialId,
+      estimated_days: estimatedDays ?? null,
+    }).select("id").single();
+
+    if (error || !order) {
+      return reply.code(500).send({ error: error?.message ?? "Failed to create order" });
+    }
+
+    return {
+      id: order.id,
+      status: "pending",
+      modelId,
+      providerId,
+      providerName: providerName ?? providerId,
+      materialName: materialName ?? materialId,
+      priceKrw: amount,
+      estimatedDays: estimatedDays ?? 0,
+      paymentMethod,
+      createdAt: new Date().toISOString(),
+      checkoutData: providerResult.checkoutData,
+    };
+  });
+
+  // GET /orders/:id — get a single order
+  server.get<{ Params: { id: string } }>("/orders/:id", async (request, reply) => {
+    const user = getUser(request.headers.authorization);
+    if (!user) return reply.code(401).send({ error: "Unauthorized" });
+
+    const { data: order } = await db.from("orders").select("*")
+      .eq("id", request.params.id).eq("user_id", user.id).single();
+    if (!order) return reply.code(404).send({ error: "Order not found" });
+
+    return {
+      id: order.id,
+      status: order.status,
+      modelId: order.model_id,
+      providerId: order.print_provider ?? "",
+      providerName: order.provider_name ?? order.print_provider ?? "",
+      materialName: order.material_name ?? "",
+      priceKrw: order.total_price_krw ?? 0,
+      estimatedDays: order.estimated_days ?? 0,
+      paymentMethod: order.payment_method ?? "card",
+      tossPaymentKey: order.payment_key ?? undefined,
+      createdAt: order.created_at,
+    };
+  });
+
+  // POST /orders/:id/confirm — confirm Toss payment after redirect
+  server.post<{
+    Params: { id: string };
+    Body: { paymentKey: string };
+  }>("/orders/:id/confirm", async (request, reply) => {
+    const user = getUser(request.headers.authorization);
+    if (!user) return reply.code(401).send({ error: "Unauthorized" });
+
+    const { paymentKey } = request.body;
+    if (!paymentKey) return reply.code(400).send({ error: "Missing paymentKey" });
+
+    const { data: order } = await db.from("orders").select("*")
+      .eq("id", request.params.id).eq("user_id", user.id).single();
+    if (!order) return reply.code(404).send({ error: "Order not found" });
+    if (order.status !== "pending") {
+      return reply.code(400).send({ error: "Order already processed" });
+    }
+
+    if (!paymentProvider) {
+      return reply.code(503).send({ error: "Payment provider not configured" });
+    }
+
+    const result = await paymentProvider.confirmPayment({
+      orderId: order.id,
+      paymentKey,
+      amount: order.total_price_krw!,
+    });
+
+    await db.from("orders").update({
+      payment_key: result.paymentKey,
+      payment_method: result.method,
+      payment_status: result.status,
+      status: "confirmed",
+      approved_at: result.approvedAt,
+      receipt_url: result.receiptUrl,
+    }).eq("id", order.id);
+
+    return {
+      id: order.id,
+      status: "confirmed",
+      modelId: order.model_id,
+      providerId: order.print_provider ?? "",
+      providerName: order.provider_name ?? order.print_provider ?? "",
+      materialName: order.material_name ?? "",
+      priceKrw: order.total_price_krw ?? 0,
+      estimatedDays: order.estimated_days ?? 0,
+      paymentMethod: result.method ?? order.payment_method ?? "card",
+      tossPaymentKey: result.paymentKey,
+      createdAt: order.created_at,
+    };
+  });
+
   // ── Model Export REST endpoints ───────────────────────────────────────────
   server.post<{
     Params: { id: string };

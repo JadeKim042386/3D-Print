@@ -259,7 +259,10 @@ export type Database = {
           created_at: string
           customer_email: string | null
           customer_name: string | null
+          estimated_days: number | null
           id: string
+          material_id: string | null
+          material_name: string | null
           model_id: string | null
           order_name: string | null
           payment_key: string | null
@@ -267,6 +270,7 @@ export type Database = {
           payment_provider: string | null
           payment_status: string | null
           print_provider: string | null
+          provider_name: string | null
           receipt_url: string | null
           shipping_address: Json | null
           status: string
@@ -281,7 +285,10 @@ export type Database = {
           created_at?: string
           customer_email?: string | null
           customer_name?: string | null
+          estimated_days?: number | null
           id?: string
+          material_id?: string | null
+          material_name?: string | null
           model_id?: string | null
           order_name?: string | null
           payment_key?: string | null
@@ -289,6 +296,7 @@ export type Database = {
           payment_provider?: string | null
           payment_status?: string | null
           print_provider?: string | null
+          provider_name?: string | null
           receipt_url?: string | null
           shipping_address?: Json | null
           status?: string
@@ -303,7 +311,10 @@ export type Database = {
           created_at?: string
           customer_email?: string | null
           customer_name?: string | null
+          estimated_days?: number | null
           id?: string
+          material_id?: string | null
+          material_name?: string | null
           model_id?: string | null
           order_name?: string | null
           payment_key?: string | null
@@ -311,6 +322,7 @@ export type Database = {
           payment_provider?: string | null
           payment_status?: string | null
           print_provider?: string | null
+          provider_name?: string | null
           receipt_url?: string | null
           shipping_address?: Json | null
           status?: string

@@ -225,7 +225,12 @@ export type PaymentMethod = "card" | "kakaopay";
 export interface CreateOrderRequest {
   modelId: string;
   providerId: string;
+  providerName?: string;
   materialId: string;
+  materialName?: string;
+  estimatedDays?: number;
+  amount: number;
+  orderName: string;
   paymentMethod: PaymentMethod;
 }
 

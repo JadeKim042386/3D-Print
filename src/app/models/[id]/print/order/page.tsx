@@ -24,7 +24,7 @@ declare global {
   }
 }
 
-const TOSS_CLIENT_KEY =
+const TOSS_CLIENT_KEY_FALLBACK =
   process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY ?? "test_ck_placeholder";
 
 const krwFormatter = new Intl.NumberFormat("ko-KR", {
@@ -94,23 +94,33 @@ export default function OrderPage() {
     setError(null);
 
     try {
+      const orderNameStr = `3D Print — ${model?.prompt?.slice(0, 30) ?? "Model"}`;
       const order = await createOrder(
         {
           modelId: params.id,
           providerId,
+          providerName: provider.name,
           materialId,
+          materialName: material.name,
+          estimatedDays: provider.estimatedDays,
+          amount: material.priceKrw,
+          orderName: orderNameStr,
           paymentMethod,
         },
         accessToken
       );
       analytics.orderPlaced(order.id, material.priceKrw);
 
+      const clientKey =
+        (order as Record<string, unknown> & { checkoutData?: { clientKey?: string } })
+          .checkoutData?.clientKey ?? TOSS_CLIENT_KEY_FALLBACK;
+
       if (paymentMethod === "card" && tossLoaded && window.TossPayments) {
-        const tossPayments = window.TossPayments(TOSS_CLIENT_KEY);
+        const tossPayments = window.TossPayments(clientKey);
         await tossPayments.requestPayment("카드", {
           amount: material.priceKrw,
           orderId: order.id,
-          orderName: `3D Print — ${model?.prompt?.slice(0, 30) ?? "Model"}`,
+          orderName: orderNameStr,
           successUrl: `${window.location.origin}/orders/${order.id}?status=success`,
           failUrl: `${window.location.origin}/orders/${order.id}?status=fail`,
         });
@@ -119,11 +129,11 @@ export default function OrderPage() {
         tossLoaded &&
         window.TossPayments
       ) {
-        const tossPayments = window.TossPayments(TOSS_CLIENT_KEY);
+        const tossPayments = window.TossPayments(clientKey);
         await tossPayments.requestPayment("카카오페이", {
           amount: material.priceKrw,
           orderId: order.id,
-          orderName: `3D Print — ${model?.prompt?.slice(0, 30) ?? "Model"}`,
+          orderName: orderNameStr,
           successUrl: `${window.location.origin}/orders/${order.id}?status=success`,
           failUrl: `${window.location.origin}/orders/${order.id}?status=fail`,
         });
