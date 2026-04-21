@@ -11,6 +11,7 @@ import {
   type PaymentMethod,
 } from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
+import { analytics } from "@/lib/analytics";
 
 declare global {
   interface Window {
@@ -102,6 +103,7 @@ export default function OrderPage() {
         },
         accessToken
       );
+      analytics.orderPlaced(order.id, material.priceKrw);
 
       if (paymentMethod === "card" && tossLoaded && window.TossPayments) {
         const tossPayments = window.TossPayments(TOSS_CLIENT_KEY);

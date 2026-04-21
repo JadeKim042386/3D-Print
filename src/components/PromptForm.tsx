@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { generateModel, CreditsExhaustedError } from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
 import UpgradeModal from "@/components/UpgradeModal";
+import { analytics } from "@/lib/analytics";
 
 export default function PromptForm() {
   const { t } = useTranslation();
@@ -25,10 +26,12 @@ export default function PromptForm() {
     setError(null);
 
     try {
+      analytics.generationSubmitted("text");
       const result = await generateModel({ prompt: prompt.trim() }, accessToken);
       router.push(`/models/${result.id}`);
     } catch (err) {
       if (err instanceof CreditsExhaustedError) {
+        analytics.creditExhausted();
         setShowUpgradeModal(true);
       } else {
         setError(err instanceof Error ? err.message : "Unknown error");

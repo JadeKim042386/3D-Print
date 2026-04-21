@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { generateModelFromImage } from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
+import { analytics } from "@/lib/analytics";
 
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
@@ -85,6 +86,7 @@ export default function ImageUploadForm() {
         .getPublicUrl(storagePath);
 
       // Call image-to-3D generation
+      analytics.generationSubmitted("image");
       const result = await generateModelFromImage(
         {
           imageUrl: urlData.publicUrl,

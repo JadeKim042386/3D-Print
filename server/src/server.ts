@@ -21,6 +21,7 @@ import type { PaymentProvider } from "./types/payment.js";
 import type { PrintProvider } from "./types/print.js";
 import type { Database } from "./types/database.js";
 import { createTransport } from "nodemailer";
+import { createMailer } from "./lib/mailer.js";
 import { piiSafeLoggerOptions } from "./middleware/pii-sanitizer.js";
 import fastifyCors from "@fastify/cors";
 
@@ -114,6 +115,7 @@ async function main() {
   const exportQueue      = redisConnected ? createExportQueue(redis)      : null;
   const paymentProvider  = createPaymentProvider(config);
   const printProviders   = createPrintProviders(config);
+  const mailer           = createMailer(config);
 
   const createContext = createContextFactory({
     supabaseUrl:       config.SUPABASE_URL,
@@ -122,6 +124,7 @@ async function main() {
     generationQueue,
     dimensionQueue,
     exportQueue,
+    mailer,
   });
 
   const appRouter = createAppRouter(paymentProvider, printProviders);
@@ -575,6 +578,26 @@ async function main() {
       sourceFileUrl: model.file_url,
       exports: exports ?? [],
     };
+  });
+  // ────────────────────────────────────────────────────────────────────────────
+
+  // ── Analytics event ingestion (best-effort, no auth required) ─────────────
+  server.post("/analytics/event", async (request, reply) => {
+    const { event, properties } = request.body as {
+      event?: string;
+      properties?: Record<string, unknown>;
+    };
+    if (!event) return reply.code(400).send({ error: "Missing event" });
+
+    const user = getUser(request.headers.authorization);
+
+    await db.from("analytics_events").insert({
+      user_id: user?.id ?? null,
+      event_name: event,
+      properties: (properties ?? {}) as Database["public"]["Tables"]["analytics_events"]["Insert"]["properties"],
+    });
+
+    return { ok: true };
   });
   // ────────────────────────────────────────────────────────────────────────────
 

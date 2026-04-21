@@ -20,6 +20,7 @@ function makeConfig(overrides: Partial<Config> = {}): Config {
     STORAGE_BUCKET: "models",
     PORT: 3000,
     KAKAOPAY_CID: "TC0ONETIME",
+    POSTHOG_HOST: "https://us.i.posthog.com",
     SENTRY_ENVIRONMENT: "test",
     ...overrides,
   };

@@ -123,6 +123,51 @@ export async function listAdminUsers(
   return trpcQuery("admin.listUsers", opts, token);
 }
 
+// --- Funnel Analytics Types ---
+
+export interface FunnelStage {
+  stage: string;
+  count: number;
+  label: string;
+}
+
+export interface FunnelConversion {
+  from: string;
+  to: string;
+  rate: number;
+}
+
+export interface FunnelAnalytics {
+  period: { from: string; days: number };
+  funnel: FunnelStage[];
+  conversions: FunnelConversion[];
+  totals: {
+    users: number;
+    signups: number;
+    generations: number;
+    orders: number;
+    payments: number;
+    upgrades: number;
+  };
+  dailyStats: Array<{
+    date: string;
+    signups: number;
+    total_generations: number;
+    total_orders: number;
+    payments_completed: number;
+    plan_upgrades: number;
+    dau: number;
+    revenue_krw: number;
+  }>;
+}
+
+export async function getFunnelAnalytics(
+  token: string,
+  days: number = 30
+): Promise<FunnelAnalytics> {
+  return trpcQuery("admin.getFunnelAnalytics", { days }, token);
+}
+
 export async function checkAdminRole(token: string): Promise<boolean> {
   try {
     await getAdminMetrics(token);

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/lib/supabase";
+import { analytics, identifyUser } from "@/lib/analytics";
 
 export default function AuthPage() {
   const { t } = useTranslation();
@@ -32,14 +33,19 @@ export default function AuthPage() {
 
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         if (error) throw error;
+        if (data.user) identifyUser(data.user.id, { email });
       } else {
-        const { error } = await supabase.auth.signUp({ email, password });
+        const { data, error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
+        if (data.user) {
+          identifyUser(data.user.id, { email });
+          analytics.signup();
+        }
       }
       router.push("/");
     } catch (err) {

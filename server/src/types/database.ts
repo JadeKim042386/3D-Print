@@ -12,6 +12,89 @@ export type Database = {
   }
   public: {
     Tables: {
+      analytics_daily: {
+        Row: {
+          id: string
+          date: string
+          landing_visits: number
+          signups: number
+          first_generations: number
+          total_generations: number
+          first_orders: number
+          total_orders: number
+          payments_completed: number
+          plan_upgrades: number
+          dau: number
+          revenue_krw: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          date: string
+          landing_visits?: number
+          signups?: number
+          first_generations?: number
+          total_generations?: number
+          first_orders?: number
+          total_orders?: number
+          payments_completed?: number
+          plan_upgrades?: number
+          dau?: number
+          revenue_krw?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          date?: string
+          landing_visits?: number
+          signups?: number
+          first_generations?: number
+          total_generations?: number
+          first_orders?: number
+          total_orders?: number
+          payments_completed?: number
+          plan_upgrades?: number
+          dau?: number
+          revenue_krw?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      analytics_events: {
+        Row: {
+          id: string
+          user_id: string | null
+          event_name: string
+          properties: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          event_name: string
+          properties?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          event_name?: string
+          properties?: Json
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       consents: {
         Row: {
           consent_type: string
