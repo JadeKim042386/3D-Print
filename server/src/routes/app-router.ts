@@ -11,6 +11,7 @@ import type { PaymentProvider } from "../types/payment.js";
 import type { PrintProvider } from "../types/print.js";
 import { createPaymentsRouter } from "./payments.js";
 import { createPrintRouter } from "./print.js";
+import { homefixRouter } from "./homefix.js";
 
 export function createAppRouter(
   paymentProvider: PaymentProvider | null,
@@ -27,6 +28,7 @@ export function createAppRouter(
     admin:            adminRouter,
     billing:          billingRouter,
     export:           exportRouter,
+    homefix:          homefixRouter,
   });
 }
 
@@ -42,6 +44,7 @@ export const appRouter = router({
   admin:            adminRouter,
   billing:          billingRouter,
   export:           exportRouter,
+  homefix:          homefixRouter,
 });
 
 export type AppRouter = typeof appRouter;

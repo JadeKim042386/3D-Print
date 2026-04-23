@@ -687,12 +687,246 @@ export type Database = {
         }
         Relationships: []
       }
+      homefix_furniture: {
+        Row: {
+          id: string
+          name_ko: string
+          name_en: string | null
+          category: string
+          brand: string | null
+          width_mm: number
+          depth_mm: number
+          height_mm: number
+          image_url: string | null
+          model_url: string | null
+          retailer_id: string | null
+          affiliate_url: string | null
+          price_krw: number | null
+          metadata: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name_ko: string
+          name_en?: string | null
+          category: string
+          brand?: string | null
+          width_mm: number
+          depth_mm: number
+          height_mm: number
+          image_url?: string | null
+          model_url?: string | null
+          retailer_id?: string | null
+          affiliate_url?: string | null
+          price_krw?: number | null
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name_ko?: string
+          name_en?: string | null
+          category?: string
+          brand?: string | null
+          width_mm?: number
+          depth_mm?: number
+          height_mm?: number
+          image_url?: string | null
+          model_url?: string | null
+          retailer_id?: string | null
+          affiliate_url?: string | null
+          price_krw?: number | null
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      homefix_staging_projects: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          room_type: string
+          room_width_mm: number
+          room_depth_mm: number
+          room_height_mm: number
+          l_width_mm: number | null
+          l_depth_mm: number | null
+          session_data: Json
+          status: string
+          render_url: string | null
+          thumbnail_url: string | null
+          render_count: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name?: string
+          room_type: string
+          room_width_mm: number
+          room_depth_mm: number
+          room_height_mm?: number
+          l_width_mm?: number | null
+          l_depth_mm?: number | null
+          session_data?: Json
+          status?: string
+          render_url?: string | null
+          thumbnail_url?: string | null
+          render_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          room_type?: string
+          room_width_mm?: number
+          room_depth_mm?: number
+          room_height_mm?: number
+          l_width_mm?: number | null
+          l_depth_mm?: number | null
+          session_data?: Json
+          status?: string
+          render_url?: string | null
+          thumbnail_url?: string | null
+          render_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      homefix_placements: {
+        Row: {
+          id: string
+          project_id: string
+          furniture_id: string
+          x_mm: number
+          y_mm: number
+          rotation_deg: number
+          label: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          furniture_id: string
+          x_mm?: number
+          y_mm?: number
+          rotation_deg?: number
+          label?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          furniture_id?: string
+          x_mm?: number
+          y_mm?: number
+          rotation_deg?: number
+          label?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      homefix_render_jobs: {
+        Row: {
+          id: string
+          project_id: string
+          user_id: string
+          status: string
+          provider: string
+          provider_task_id: string | null
+          camera_preset: string
+          staging_snapshot: Json
+          result_url: string | null
+          error_message: string | null
+          started_at: string | null
+          completed_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          user_id: string
+          status?: string
+          provider?: string
+          provider_task_id?: string | null
+          camera_preset?: string
+          staging_snapshot?: Json
+          result_url?: string | null
+          error_message?: string | null
+          started_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          user_id?: string
+          status?: string
+          provider?: string
+          provider_task_id?: string | null
+          camera_preset?: string
+          staging_snapshot?: Json
+          result_url?: string | null
+          error_message?: string | null
+          started_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      homefix_usage: {
+        Row: {
+          id: string
+          user_id: string
+          period_start: string
+          renders_used: number
+          renders_limit: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          period_start: string
+          renders_used?: number
+          renders_limit?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          period_start?: string
+          renders_used?: number
+          renders_limit?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      homefix_increment_render_usage: {
+        Args: { p_user_id: string; p_period_start: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
