@@ -6,6 +6,16 @@ import { useAuthStore } from "@/lib/store";
 import RoomSetupEditor, { type RoomDimensions } from "@/components/RoomSetupEditor";
 import FurniturePlacer from "@/components/FurniturePlacer";
 
+const CAMERA_LABELS: Record<string, string> = {
+  perspective: "원근감 (기본)",
+  top: "위에서 내려보기",
+  corner_ne: "북동쪽 코너",
+  corner_nw: "북서쪽 코너",
+  corner_se: "남동쪽 코너",
+  corner_sw: "남서쪽 코너",
+};
+type CameraPreset = keyof typeof CAMERA_LABELS;
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 const ROOM_TYPES = ["거실", "침실", "주방", "화장실", "발코니", "기타"] as const;
@@ -101,8 +111,8 @@ export default function HomefixSetupPage() {
   const router = useRouter();
   const accessToken = useAuthStore((s) => s.accessToken);
 
-  // Step 1 state
-  const [step, setStep] = useState<1 | 2>(1);
+  // Step state
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [name, setName] = useState("내 공간");
   const [roomType, setRoomType] = useState<RoomType>("거실");
   const [dims, setDims] = useState<RoomDimensions>({
@@ -111,10 +121,14 @@ export default function HomefixSetupPage() {
     room_height_mm: 2400,
   });
 
-  // Step 1 save → step 2
+  // Created project
   const [projectId, setProjectId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Step 3 — render
+  const [camera, setCamera] = useState<CameraPreset>("perspective");
+  const [rendering, setRendering] = useState(false);
 
   const handleStep1Next = async () => {
     if (!accessToken) {
@@ -138,9 +152,27 @@ export default function HomefixSetupPage() {
     }
   };
 
-  const handleStep2Next = () => {
-    if (projectId) {
-      router.push(`/homefix/planner/${projectId}`);
+  const handleStep3Render = async () => {
+    if (!accessToken || !projectId) return;
+    setRendering(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/trpc/homefix.render.trigger`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ json: { project_id: projectId, camera_preset: camera } }),
+      });
+      if (!res.ok) {
+        const msg = await res.text().catch(() => res.statusText);
+        throw new Error(msg);
+      }
+      const data = await res.json();
+      const result = data.result?.data?.json ?? data.result?.data ?? data;
+      const modelId = result?.model_id ?? result?.job_id;
+      router.push(modelId ? `/models/${modelId}` : "/homefix");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "렌더링 요청에 실패했습니다.");
+      setRendering(false);
     }
   };
 
@@ -234,7 +266,7 @@ export default function HomefixSetupPage() {
 
   // ── Step 2 ─────────────────────────────────────────────────────────────────
 
-  return (
+  if (step === 2) return (
     <div className="min-h-[calc(100vh-57px)] px-4 py-10 sm:py-14">
       <div className="mx-auto max-w-2xl">
         <StepIndicator current={2} />
@@ -259,10 +291,71 @@ export default function HomefixSetupPage() {
           </button>
           <button
             type="button"
-            onClick={handleStep2Next}
+            onClick={() => setStep(3)}
             className="rounded-xl bg-gray-900 px-8 py-3 text-sm font-semibold text-white transition-colors hover:bg-gray-800"
           >
             다음: 3D 렌더링 →
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── Step 3 ─────────────────────────────────────────────────────────────────
+
+  return (
+    <div className="min-h-[calc(100vh-57px)] px-4 py-10 sm:py-14">
+      <div className="mx-auto max-w-2xl">
+        <StepIndicator current={3} />
+
+        <h1 className="mb-2 text-2xl font-bold text-gray-900 sm:text-3xl">3D 렌더링</h1>
+        <p className="mb-7 text-sm leading-relaxed text-gray-500">
+          설정한 공간과 가구를 AI가 실사 3D로 렌더링합니다. 카메라 앵글을 선택하고 생성을 시작하세요.
+        </p>
+
+        {/* Camera preset */}
+        <div className="mb-6">
+          <label className="mb-2 block text-sm font-semibold text-gray-700">카메라 앵글</label>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {(Object.entries(CAMERA_LABELS) as [CameraPreset, string][]).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setCamera(key)}
+                className={`rounded-xl border px-3 py-2.5 text-xs font-medium transition-colors ${
+                  camera === key
+                    ? "border-gray-900 bg-gray-900 text-white"
+                    : "border-gray-200 bg-white text-gray-600 hover:border-gray-400"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {error && (
+          <p className="mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+            {error}
+          </p>
+        )}
+
+        {/* Actions */}
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => setStep(2)}
+            className="rounded-xl border border-gray-200 bg-white px-6 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+          >
+            ← 이전
+          </button>
+          <button
+            type="button"
+            onClick={handleStep3Render}
+            disabled={rendering}
+            className="rounded-xl bg-gray-900 px-8 py-3 text-sm font-semibold text-white transition-colors hover:bg-gray-800 disabled:opacity-60"
+          >
+            {rendering ? "렌더링 중…" : "✦ 3D 렌더링 생성"}
           </button>
         </div>
       </div>
