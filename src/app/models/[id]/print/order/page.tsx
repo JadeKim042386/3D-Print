@@ -112,7 +112,7 @@ export default function OrderPage() {
       analytics.orderPlaced(order.id, material.priceKrw);
 
       const clientKey =
-        (order as Record<string, unknown> & { checkoutData?: { clientKey?: string } })
+        (order as unknown as { checkoutData?: { clientKey?: string } })
           .checkoutData?.clientKey ?? TOSS_CLIENT_KEY_FALLBACK;
 
       if (paymentMethod === "card" && tossLoaded && window.TossPayments) {
