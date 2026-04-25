@@ -240,7 +240,7 @@ export const homefixStagingRouter = router({
           rotation_deg: input.rotation_deg,
           label:        input.label ?? null,
         })
-        .select("*, homefix_furniture(*)")
+        .select("*, furniture_catalog(*)")
         .single();
 
       if (error || !data) {
