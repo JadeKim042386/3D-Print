@@ -62,6 +62,23 @@ export const metadata: Metadata = {
   },
 };
 
+const websiteJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "3D 프린팅 브로커리지",
+  url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://localhost:3000",
+  description:
+    "텍스트 하나로 3D 모델을 생성하고, 최적의 업체에서 프린팅까지 한 번에. AI 기반 3D 프린팅 브로커리지 서비스.",
+  potentialAction: {
+    "@type": "SearchAction",
+    target: {
+      "@type": "EntryPoint",
+      urlTemplate: `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://localhost:3000"}/gallery?q={search_term_string}`,
+    },
+    "query-input": "required name=search_term_string",
+  },
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -69,6 +86,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+        />
+      </head>
       <body className={`${notoSansKR.variable} font-sans antialiased`}>
         <Providers>
           <Navbar />
