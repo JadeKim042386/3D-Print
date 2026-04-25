@@ -3,9 +3,11 @@ import { autoPlace } from "../lib/auto-placement/index.js";
 import {
   obbInsidePolygon,
   obbOverlap,
+  obbCorners,
   makeFurnitureObb,
   ensureCcw,
   polygonCentroid,
+  distancePointToPolygonEdge,
 } from "../lib/auto-placement/geometry.js";
 
 const rectRoom = (w: number, d: number) =>
@@ -181,6 +183,72 @@ describe("auto-placement v1 — category-specific behaviour", () => {
     const d = Math.hypot(result.best!.x_mm - c.x_mm, result.best!.y_mm - c.y_mm);
     // Should be within roughly a third of the room diagonal of the centre.
     expect(d).toBeLessThan(2000);
+  });
+});
+
+describe("auto-placement v1.1 — clearance_mm hard constraint", () => {
+  it("keeps every corner ≥ clearance_mm from walls for non-wall-aligned categories", () => {
+    const room = rectRoom(4000, 4000);
+    const result = autoPlace({
+      roomPolygon: room,
+      existing: [],
+      // 식탁/의자 has wallAlign:false, so clearance is enforced on all corners.
+      candidate: { width_mm: 1400, depth_mm: 800, height_mm: 750, category: "식탁/의자" },
+      clearanceMm: 100,
+    });
+    expect(result.best).not.toBeNull();
+    const corners = obbCorners(
+      makeFurnitureObb(
+        result.best!.x_mm,
+        result.best!.y_mm,
+        result.best!.rotation_deg,
+        1400,
+        800,
+      ),
+    );
+    for (const c of corners) {
+      // Allow 0.01 mm of float-noise tolerance.
+      expect(distancePointToPolygonEdge(c, room)).toBeGreaterThanOrEqual(100 - 0.01);
+    }
+  });
+
+  it("allows back corners flush against the wall but enforces front clearance for wall-aligned categories", () => {
+    const room = rectRoom(4000, 5000);
+    const result = autoPlace({
+      roomPolygon: room,
+      existing: [],
+      candidate: { width_mm: 1500, depth_mm: 2000, height_mm: 700, category: "침대" },
+      clearanceMm: 100,
+    });
+    expect(result.best).not.toBeNull();
+    const corners = obbCorners(
+      makeFurnitureObb(
+        result.best!.x_mm,
+        result.best!.y_mm,
+        result.best!.rotation_deg,
+        1500,
+        2000,
+      ),
+    );
+    // Front corners (local +y, indices 2 and 3) must respect the clearance
+    // even when the back face is flush against a wall.
+    for (const i of [2, 3]) {
+      expect(distancePointToPolygonEdge(corners[i]!, room)).toBeGreaterThanOrEqual(100 - 0.01);
+    }
+  });
+
+  it("returns no placement when clearance is too aggressive to fit", () => {
+    // 2x2 m room with a 1.4x0.8 m table needs ≥ 600 mm clearance to be impossible
+    // (after a centred placement leaves 300 mm to the long walls and 600 mm to the
+    // short walls). Use 700 mm clearance to push past the lateral 300 mm slack.
+    const result = autoPlace({
+      roomPolygon: rectRoom(2000, 2000),
+      existing: [],
+      candidate: { width_mm: 1400, depth_mm: 800, height_mm: 750, category: "식탁/의자" },
+      clearanceMm: 400,
+    });
+    expect(result.best).toBeNull();
+    expect(result.confidence).toBe(0);
   });
 });
 

@@ -10,6 +10,7 @@ import {
   polygonWalls,
   obbInsidePolygon,
   obbOverlap,
+  obbCorners,
   makeFurnitureObb,
   distancePointToPolygonEdge,
 } from "./geometry.js";
@@ -98,15 +99,19 @@ function passesHardConstraints(
   );
   if (!obbInsidePolygon(obb, poly)) return false;
 
-  // Wall clearance: centre point distance to polygon edges minus the halved
-  // diagonal of the OBB approximates the closest corner-to-wall clearance.
+  // Hard wall-clearance constraint: every checked corner must lie ≥ `clearance`
+  // mm from any polygon edge. This is functionally equivalent to inset-polygon
+  // containment for axis-aligned rooms, while letting us exempt the back face
+  // for wall-aligned poses where flush-against-wall is intentional.
+  //
+  // OBB corner indices (from obbCorners): 0,1 = back (-y local), 2,3 = front
+  // (+y local). For wall-aligned poses we only enforce clearance on the front
+  // corners; the back face is allowed to touch its target wall.
   if (clearance > 0) {
-    const halfDiag = Math.hypot(obb.hx, obb.hy);
-    const centreEdgeDist = distancePointToPolygonEdge({ x_mm: obb.cx, y_mm: obb.cy }, poly);
-    if (centreEdgeDist + 1e-3 < halfDiag) {
-      // OBB might extend past wall — only fail when corners are outside,
-      // which obbInsidePolygon already covers. Skip extra clearance check
-      // for this pose because tight back-against-wall placements are desired.
+    const corners = obbCorners(obb);
+    const cornersToCheck = pose.wallAligned ? [corners[2]!, corners[3]!] : corners;
+    for (const c of cornersToCheck) {
+      if (distancePointToPolygonEdge(c, poly) + 1e-3 < clearance) return false;
     }
   }
 
@@ -170,7 +175,7 @@ function generatePoses(
         // Centre point sits inset by halfD along the inward normal.
         const cx = w.a.x_mm + dx * along_mm + nx * halfD;
         const cy = w.a.y_mm + dy * along_mm + ny * halfD;
-        poses.push({ x_mm: cx, y_mm: cy, rotation_deg: snapped });
+        poses.push({ x_mm: cx, y_mm: cy, rotation_deg: snapped, wallAligned: true });
       }
     }
   }

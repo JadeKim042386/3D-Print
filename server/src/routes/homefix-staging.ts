@@ -326,9 +326,20 @@ export const homefixStagingRouter = router({
 
   /**
    * Auto-place a candidate piece of furniture in a project.
-   * Returns best + alternative (x, y, rotation) suggestions and a confidence
-   * score. Does NOT persist anything — the client decides which suggestion to
-   * accept and then calls `addFurniture` with the chosen pose.
+   *
+   * Returns the best pose plus up to `k - 1` alternatives and a `confidence`
+   * score. **Confidence** is the weighted-sum fitness score in `[0, 1]` of
+   * the best candidate (see `WEIGHTS` in `server/src/lib/auto-placement/scorer.ts`):
+   * higher means more sub-criteria (wall affinity, clearance, pairing, etc.)
+   * were satisfied. Returns `0` when no valid pose exists (`best` is `null`).
+   *
+   * `clearance_mm` is enforced as a hard constraint: the front corners of the
+   * placed piece must lie at least `clearance_mm` away from any room wall.
+   * For wall-aligned categories the back corners are allowed to touch the
+   * wall they are flush against.
+   *
+   * Implemented as a **query** (no DB writes); the client decides which
+   * suggestion to accept and then calls `addFurniture` with the chosen pose.
    */
   autoPlace: protectedProcedure
     .input(
@@ -339,7 +350,7 @@ export const homefixStagingRouter = router({
         clearance_mm: z.number().int().min(0).max(500).default(50),
       }),
     )
-    .mutation(async ({ ctx, input }) => {
+    .query(async ({ ctx, input }) => {
       // 1. Project + candidate furniture + existing placements
       const [projectRes, candidateRes, placementsRes] = await Promise.all([
         ctx.supabase

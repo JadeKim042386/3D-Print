@@ -27,6 +27,8 @@ export interface CandidatePose {
   x_mm: number;
   y_mm: number;
   rotation_deg: number;
+  /** True when the pose was generated with the back face flush against a wall. */
+  wallAligned?: boolean;
 }
 
 export interface ScoreContext {

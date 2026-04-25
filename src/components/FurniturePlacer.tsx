@@ -207,7 +207,7 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
 
     // Try AI auto-placement; fall back to room-center on any error
     try {
-      const autoResult = await trpcMutation(
+      const autoResult = await trpcQuery(
         "homefix.staging.autoPlace",
         { json: { project_id: projectId, furniture_id: item.id, k: 3 } },
         token,
