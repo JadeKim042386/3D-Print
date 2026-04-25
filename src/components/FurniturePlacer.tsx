@@ -264,9 +264,9 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
     setAutoPlacePreview(null);
 
     try {
-      const autoResult = await trpcMutation(
+      const autoResult = await trpcQuery(
         "homefix.staging.autoPlace",
-        { json: { project_id: projectId, furniture_id: item.id, k: 3 } },
+        { json: { project_id: projectId, furniture_id: item.id, k: 3, clearance_mm: 50 } },
         token,
       );
 
