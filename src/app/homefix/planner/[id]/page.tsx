@@ -29,7 +29,7 @@ interface Placement {
   id: string;
   x_mm: number;
   y_mm: number;
-  homefix_furniture: FurnitureItem;
+  furniture_catalog: FurnitureItem;
 }
 
 interface Project {
@@ -202,9 +202,9 @@ export default function PlannerRenderPage() {
                 <ul className="flex flex-col gap-2">
                   {project.placements.map((p) => (
                     <li key={p.id} className="flex items-center justify-between text-sm">
-                      <span className="text-gray-900">{p.homefix_furniture.name_ko}</span>
+                      <span className="text-gray-900">{p.furniture_catalog.name_ko}</span>
                       <span className="text-xs text-gray-400">
-                        {fmtPrice(p.homefix_furniture.price_krw)}
+                        {fmtPrice(p.furniture_catalog.price_krw)}
                       </span>
                     </li>
                   ))}
@@ -214,7 +214,7 @@ export default function PlannerRenderPage() {
                   <span className="font-semibold text-gray-900">
                     {fmtPrice(
                       project.placements.reduce(
-                        (sum, p) => sum + p.homefix_furniture.price_krw,
+                        (sum, p) => sum + p.furniture_catalog.price_krw,
                         0,
                       ),
                     )}

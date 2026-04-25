@@ -190,7 +190,7 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
               x_mm: p.x_mm as number,
               y_mm: p.y_mm as number,
               rotation_deg: (p.rotation_deg as number) ?? 0,
-              furniture: (p.furniture_catalog ?? p.homefix_furniture) as FurnitureItem | undefined,
+              furniture: p.furniture_catalog as FurnitureItem | undefined,
             })),
           );
         }

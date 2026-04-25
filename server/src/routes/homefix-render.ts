@@ -68,7 +68,7 @@ export const homefixRenderRouter = router({
       // 2 — verify project ownership + load placements
       const { data: project } = await ctx.supabase
         .from("homefix_staging_projects")
-        .select("*, homefix_placements(*, homefix_furniture(*))")
+        .select("*, homefix_placements(*, furniture_catalog(*))")
         .eq("id", input.project_id)
         .eq("user_id", ctx.user.id)
         .single();

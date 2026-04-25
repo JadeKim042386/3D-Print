@@ -112,7 +112,7 @@ export const homefixStagingRouter = router({
           .single(),
         ctx.supabase
           .from("homefix_placements")
-          .select("*, homefix_furniture(*)")
+          .select("*, furniture_catalog(*)")
           .eq("project_id", input.id)
           .order("created_at"),
       ]);
