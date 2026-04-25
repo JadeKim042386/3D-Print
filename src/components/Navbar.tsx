@@ -54,13 +54,6 @@ export default function Navbar() {
           </Link>
 
           <Link
-            href="/homefix"
-            className="text-sm text-gray-600 hover:text-gray-900 min-h-[44px] flex items-center px-2"
-          >
-            인테리어
-          </Link>
-
-          <Link
             href="/pricing"
             className="text-sm text-gray-600 hover:text-gray-900 min-h-[44px] flex items-center px-2"
           >
