@@ -108,10 +108,37 @@ async function trpcMutation(path: string, body: unknown, token: string) {
   return data.result?.data?.json ?? data.result?.data ?? data;
 }
 
+// ─── Thumbnail placeholder ────────────────────────────────────────────────────
+
+function FurnitureThumbnail({ url, name }: { url: string | null; name: string }) {
+  const [failed, setFailed] = useState(false);
+  if (!url || failed) {
+    return (
+      <div className="flex h-16 w-full items-center justify-center rounded-lg bg-gray-100">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.5">
+          <rect x="2" y="7" width="20" height="14" rx="2" />
+          <path d="M16 7V5a2 2 0 0 0-4 0v2" />
+          <path d="M8 7V5a2 2 0 0 1 4 0" />
+        </svg>
+      </div>
+    );
+  }
+  return (
+    <img
+      src={url}
+      alt={name}
+      onError={() => setFailed(true)}
+      className="h-16 w-full rounded-lg object-cover"
+    />
+  );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function FurniturePlacer({ projectId, dims, token }: FurniturePlacerProps) {
   const [category, setCategory] = useState<string>("전체");
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [catalog, setCatalog] = useState<FurnitureItem[]>([]);
   const [placements, setPlacements] = useState<Placement[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -119,8 +146,6 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
   const [addingId, setAddingId] = useState<string | null>(null);
 
   const svgRef = useRef<SVGSVGElement>(null);
-  // Stores drag state including live current position (in mm) so pointerup
-  // can persist the final position without reading potentially-stale state.
   const dragRef = useRef<{
     placementId: string;
     startSvgX: number;
@@ -134,18 +159,24 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
   const { scale, ox, oy } = computeTransform(dims);
   const polygonStr = buildPolygonStr(dims, scale, ox, oy);
 
-  // ── Fetch catalog when category changes ────────────────────────────────────
+  // ── Debounce search input ──────────────────────────────────────────────────
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // ── Fetch catalog when category or search changes ──────────────────────────
   useEffect(() => {
     setLoadingCatalog(true);
-    const input =
-      category === "전체"
-        ? { json: { limit: 20 } }
-        : { json: { category, limit: 20 } };
-    trpcQuery("homefix.catalog.list", input, token)
+    const inputObj: Record<string, unknown> = { limit: 20 };
+    if (category !== "전체") inputObj.category = category;
+    if (debouncedSearch.trim()) inputObj.query = debouncedSearch.trim();
+
+    trpcQuery("homefix.catalog.list", { json: inputObj }, token)
       .then((result) => setCatalog(result?.items ?? []))
       .catch(() => {})
       .finally(() => setLoadingCatalog(false));
-  }, [category, token]);
+  }, [category, debouncedSearch, token]);
 
   // ── Load existing placements for this project ──────────────────────────────
   useEffect(() => {
@@ -159,7 +190,7 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
               x_mm: p.x_mm as number,
               y_mm: p.y_mm as number,
               rotation_deg: (p.rotation_deg as number) ?? 0,
-              furniture: p.homefix_furniture as FurnitureItem | undefined,
+              furniture: (p.furniture_catalog ?? p.homefix_furniture) as FurnitureItem | undefined,
             })),
           );
         }
@@ -167,21 +198,43 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
       .catch(() => {});
   }, [projectId, token]);
 
-  // ── Add furniture to center of room ───────────────────────────────────────
+  // ── Add furniture with AI auto-placement ──────────────────────────────────
   const addFurniture = async (item: FurnitureItem) => {
     setAddingId(item.id);
-    const x_mm = Math.max(0, Math.round((dims.room_width_mm - item.width_mm) / 2));
-    const y_mm = Math.max(0, Math.round((dims.room_depth_mm - item.depth_mm) / 2));
+    let x_mm: number;
+    let y_mm: number;
+    let rotation_deg = 0;
+
+    // Try AI auto-placement; fall back to room-center on any error
+    try {
+      const autoResult = await trpcMutation(
+        "homefix.staging.autoPlace",
+        { json: { project_id: projectId, furniture_id: item.id, k: 3 } },
+        token,
+      );
+      if (autoResult?.best) {
+        x_mm = autoResult.best.x_mm;
+        y_mm = autoResult.best.y_mm;
+        rotation_deg = autoResult.best.rotation_deg ?? 0;
+      } else {
+        x_mm = Math.max(0, Math.round((dims.room_width_mm - item.width_mm) / 2));
+        y_mm = Math.max(0, Math.round((dims.room_depth_mm - item.depth_mm) / 2));
+      }
+    } catch {
+      x_mm = Math.max(0, Math.round((dims.room_width_mm - item.width_mm) / 2));
+      y_mm = Math.max(0, Math.round((dims.room_depth_mm - item.depth_mm) / 2));
+    }
+
     try {
       const result = await trpcMutation(
         "homefix.staging.addFurniture",
-        { json: { project_id: projectId, furniture_id: item.id, x_mm, y_mm, rotation_deg: 0 } },
+        { json: { project_id: projectId, furniture_id: item.id, x_mm, y_mm, rotation_deg } },
         token,
       );
       if (result?.id) {
         setPlacements((prev) => [
           ...prev,
-          { id: result.id, furniture_id: item.id, x_mm, y_mm, rotation_deg: 0, furniture: item },
+          { id: result.id, furniture_id: item.id, x_mm, y_mm, rotation_deg, furniture: item },
         ]);
       }
     } catch {}
@@ -279,6 +332,25 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
     <div className="flex flex-col gap-6">
       {/* ── Furniture catalog ── */}
       <div>
+        {/* Search input */}
+        <div className="mb-3 relative">
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="가구 이름 검색…"
+            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 pl-8 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none"
+          />
+          <svg
+            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"
+            width="14" height="14" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" strokeWidth="2"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.35-4.35" />
+          </svg>
+        </div>
+
         {/* Category filter */}
         <div className="mb-3 flex flex-wrap gap-2">
           {CATEGORIES.map((c) => (
@@ -298,17 +370,20 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
         </div>
 
         {/* Catalog grid */}
-        <div className="grid grid-cols-2 gap-3 overflow-y-auto sm:grid-cols-3" style={{ maxHeight: 224 }}>
+        <div className="grid grid-cols-2 gap-3 overflow-y-auto sm:grid-cols-3" style={{ maxHeight: 260 }}>
           {loadingCatalog ? (
             <p className="col-span-3 py-6 text-center text-sm text-gray-400">불러오는 중…</p>
           ) : catalog.length === 0 ? (
-            <p className="col-span-3 py-6 text-center text-sm text-gray-400">가구가 없습니다</p>
+            <p className="col-span-3 py-6 text-center text-sm text-gray-400">
+              {debouncedSearch ? `"${debouncedSearch}" 검색 결과 없음` : "가구가 없습니다"}
+            </p>
           ) : (
             catalog.map((item) => (
               <div
                 key={item.id}
                 className="flex flex-col gap-1.5 rounded-xl border border-gray-200 bg-white p-3"
               >
+                <FurnitureThumbnail url={item.image_url} name={item.name_ko} />
                 <p className="line-clamp-2 text-xs font-semibold leading-tight text-gray-900">
                   {item.name_ko}
                 </p>
@@ -325,7 +400,7 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
                     disabled={addingId === item.id}
                     className="min-h-[28px] rounded-lg bg-gray-900 px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-gray-800 disabled:opacity-50"
                   >
-                    {addingId === item.id ? "…" : "+ 배치"}
+                    {addingId === item.id ? "배치 중…" : "+ 배치"}
                   </button>
                 </div>
               </div>
@@ -337,7 +412,14 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
       {/* ── Placement canvas ── */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold text-gray-700">배치 캔버스</span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-gray-700">배치 캔버스</span>
+            {placements.length > 0 && (
+              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
+                {placements.length}개
+              </span>
+            )}
+          </div>
           {selectedId && (
             <div className="flex gap-2">
               <button
@@ -434,7 +516,7 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
 
         {placements.length === 0 && (
           <p className="text-center text-xs text-gray-400">
-            위 카탈로그에서 가구를 선택해 캔버스에 배치하세요
+            위 카탈로그에서 가구를 선택해 AI 자동 배치하세요
           </p>
         )}
         {placements.length > 0 && (
