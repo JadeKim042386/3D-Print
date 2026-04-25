@@ -26,7 +26,8 @@ export const homefixCatalogRouter = router({
     .query(async ({ ctx, input }) => {
       let query = ctx.supabase
         .from("furniture_catalog")
-        .select("*", { count: "exact" });
+        .select("*", { count: "exact" })
+        .eq("is_active", true);
 
       if (input.category)      query = query.eq("category", input.category);
       if (input.brand)         query = query.ilike("brand", `%${input.brand}%`);
@@ -58,6 +59,7 @@ export const homefixCatalogRouter = router({
         .from("furniture_catalog")
         .select("*")
         .eq("id", input.id)
+        .eq("is_active", true)
         .single();
 
       if (error || !data) {
