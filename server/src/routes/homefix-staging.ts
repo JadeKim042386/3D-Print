@@ -2,8 +2,51 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../trpc/trpc.js";
 import type { Json } from "../types/database.js";
+import {
+  autoPlace,
+  FURNITURE_CATEGORIES,
+  type FurnitureCategory,
+  type Vec2,
+  type ExistingItem,
+} from "../lib/auto-placement/index.js";
 
 const ROOM_TYPES = ["거실", "침실", "주방", "화장실", "발코니", "기타"] as const;
+
+/**
+ * Build a CCW room polygon (mm) from staging-project geometry.
+ * Origin = bottom-left. L-shape notch (when l_width/l_depth set) is removed
+ * from the top-right corner.
+ */
+function projectPolygon(p: {
+  room_width_mm: number;
+  room_depth_mm: number;
+  l_width_mm: number | null;
+  l_depth_mm: number | null;
+}): Vec2[] {
+  const w = p.room_width_mm;
+  const d = p.room_depth_mm;
+  if (p.l_width_mm && p.l_depth_mm && p.l_width_mm < w && p.l_depth_mm < d) {
+    // L-shape: notch in top-right corner.
+    return [
+      { x_mm: 0, y_mm: 0 },
+      { x_mm: w, y_mm: 0 },
+      { x_mm: w, y_mm: d - p.l_depth_mm },
+      { x_mm: w - p.l_width_mm, y_mm: d - p.l_depth_mm },
+      { x_mm: w - p.l_width_mm, y_mm: d },
+      { x_mm: 0, y_mm: d },
+    ];
+  }
+  return [
+    { x_mm: 0, y_mm: 0 },
+    { x_mm: w, y_mm: 0 },
+    { x_mm: w, y_mm: d },
+    { x_mm: 0, y_mm: d },
+  ];
+}
+
+function isFurnitureCategory(c: string): c is FurnitureCategory {
+  return (FURNITURE_CATEGORIES as readonly string[]).includes(c);
+}
 
 const PlacementInput = z.object({
   furniture_id:  z.string().uuid(),
@@ -279,6 +322,111 @@ export const homefixStagingRouter = router({
       }
 
       return { removed: true };
+    }),
+
+  /**
+   * Auto-place a candidate piece of furniture in a project.
+   * Returns best + alternative (x, y, rotation) suggestions and a confidence
+   * score. Does NOT persist anything — the client decides which suggestion to
+   * accept and then calls `addFurniture` with the chosen pose.
+   */
+  autoPlace: protectedProcedure
+    .input(
+      z.object({
+        project_id:   z.string().uuid(),
+        furniture_id: z.string().uuid(),
+        k:            z.number().int().min(1).max(10).default(3),
+        clearance_mm: z.number().int().min(0).max(500).default(50),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // 1. Project + candidate furniture + existing placements
+      const [projectRes, candidateRes, placementsRes] = await Promise.all([
+        ctx.supabase
+          .from("homefix_staging_projects")
+          .select("id, room_width_mm, room_depth_mm, l_width_mm, l_depth_mm")
+          .eq("id", input.project_id)
+          .eq("user_id", ctx.user.id)
+          .single(),
+        ctx.supabase
+          .from("furniture_catalog")
+          .select("id, category, width_mm, depth_mm, height_mm")
+          .eq("id", input.furniture_id)
+          .single(),
+        ctx.supabase
+          .from("homefix_placements")
+          .select("furniture_id, x_mm, y_mm, rotation_deg")
+          .eq("project_id", input.project_id),
+      ]);
+
+      if (projectRes.error || !projectRes.data) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Staging project not found" });
+      }
+      if (candidateRes.error || !candidateRes.data) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Furniture item not found" });
+      }
+      if (!isFurnitureCategory(candidateRes.data.category)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Unsupported category: ${candidateRes.data.category}`,
+        });
+      }
+
+      const polygon = projectPolygon(projectRes.data);
+
+      // Fetch dimensions for every distinct furniture item already placed.
+      const placedRows = placementsRes.data ?? [];
+      const furnitureIds = [...new Set(placedRows.map((r) => r.furniture_id))];
+      const existing: ExistingItem[] = [];
+      if (furnitureIds.length > 0) {
+        const { data: catalogRows, error: catalogErr } = await ctx.supabase
+          .from("furniture_catalog")
+          .select("id, category, width_mm, depth_mm")
+          .in("id", furnitureIds);
+        if (catalogErr) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: `Failed to load placed furniture: ${catalogErr.message}`,
+          });
+        }
+        const byId = new Map((catalogRows ?? []).map((r) => [r.id, r] as const));
+        for (const row of placedRows) {
+          const f = byId.get(row.furniture_id);
+          if (!f || !isFurnitureCategory(f.category)) continue;
+          existing.push({
+            x_mm: row.x_mm,
+            y_mm: row.y_mm,
+            rotation_deg: Number(row.rotation_deg),
+            width_mm: f.width_mm,
+            depth_mm: f.depth_mm,
+            category: f.category,
+          });
+        }
+      }
+
+      const result = autoPlace({
+        roomPolygon: polygon,
+        existing,
+        candidate: {
+          width_mm: candidateRes.data.width_mm,
+          depth_mm: candidateRes.data.depth_mm,
+          height_mm: candidateRes.data.height_mm,
+          category: candidateRes.data.category,
+        },
+        k: input.k,
+        clearanceMm: input.clearance_mm,
+      });
+
+      return {
+        best: result.best,
+        alternatives: result.alternatives,
+        confidence: result.confidence,
+        room: {
+          polygon,
+          width_mm: projectRes.data.room_width_mm,
+          depth_mm: projectRes.data.room_depth_mm,
+        },
+      };
     }),
 
   /** Save the full canvas state (session persistence) */
