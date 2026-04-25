@@ -208,7 +208,10 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
     startYmm: number;
     curXmm: number;
     curYmm: number;
+    hasMoved: boolean;
   } | null>(null);
+  // Suppresses the SVG onClick deselect that fires after a drag gesture ends
+  const suppressNextClick = useRef(false);
 
   const { scale, ox, oy } = computeTransform(dims);
   const polygonStr = buildPolygonStr(dims, scale, ox, oy);
@@ -380,6 +383,7 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
       startYmm: p.y_mm,
       curXmm: p.x_mm,
       curYmm: p.y_mm,
+      hasMoved: false,
     };
     setSelectedId(placementId);
     svgRef.current?.setPointerCapture(e.pointerId);
@@ -393,6 +397,14 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
       const dy = (y - dragRef.current.startSvgY) / scale;
       const newX = Math.max(0, Math.round(dragRef.current.startXmm + dx));
       const newY = Math.max(0, Math.round(dragRef.current.startYmm + dy));
+      // Mark as a real drag once the pointer moves more than 3 SVG pixels
+      if (
+        !dragRef.current.hasMoved &&
+        (Math.abs(x - dragRef.current.startSvgX) > 3 ||
+          Math.abs(y - dragRef.current.startSvgY) > 3)
+      ) {
+        dragRef.current.hasMoved = true;
+      }
       dragRef.current.curXmm = newX;
       dragRef.current.curYmm = newY;
       const id = dragRef.current.placementId;
@@ -405,8 +417,12 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
 
   const onSvgPointerUp = useCallback(async () => {
     if (!dragRef.current) return;
-    const { placementId, curXmm, curYmm } = dragRef.current;
+    const { placementId, curXmm, curYmm, hasMoved } = dragRef.current;
     dragRef.current = null;
+    // Suppress the click event that browsers fire after a pointer-up from a drag
+    if (hasMoved) suppressNextClick.current = true;
+    // Only persist to backend if the item actually moved
+    if (!hasMoved) return;
     await trpcMutation(
       "homefix.staging.updatePlacement",
       { json: { placement_id: placementId, x_mm: curXmm, y_mm: curYmm } },
@@ -550,7 +566,13 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
             onPointerMove={onSvgPointerMove}
             onPointerUp={onSvgPointerUp}
             onPointerCancel={onSvgPointerUp}
-            onClick={() => setSelectedId(null)}
+            onClick={() => {
+              if (suppressNextClick.current) {
+                suppressNextClick.current = false;
+                return;
+              }
+              setSelectedId(null);
+            }}
           >
             <defs>
               <pattern id="fp-dots" width="12" height="12" patternUnits="userSpaceOnUse">
