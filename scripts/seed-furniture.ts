@@ -1,5 +1,5 @@
 /**
- * Seed script: furniture_products
+ * Seed script: furniture_catalog
  *
  * Usage:
  *   npx tsx --env-file=.env.local scripts/seed-furniture.ts
@@ -29,7 +29,6 @@ type ProductRow = {
   price_krw: number;
   image_url?: string;
   affiliate_url?: string;
-  source: "ohouse" | "naver" | "manual";
 };
 
 const PRODUCTS: ProductRow[] = [
@@ -41,7 +40,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 210, depth_cm: 90, height_cm: 85,
     price_krw: 890000,
     affiliate_url: "https://ohou.se/productions/1234567",
-    source: "ohouse",
   },
   {
     name_ko: "2인용 가죽 소파",
@@ -50,7 +48,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 160, depth_cm: 85, height_cm: 84,
     price_krw: 690000,
     affiliate_url: "https://ohou.se/productions/1234568",
-    source: "ohouse",
   },
   {
     name_ko: "1인용 리클라이너 소파",
@@ -59,7 +56,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 95, depth_cm: 90, height_cm: 105,
     price_krw: 450000,
     affiliate_url: "https://ohou.se/productions/1234569",
-    source: "ohouse",
   },
   {
     name_ko: "코너 L형 소파",
@@ -68,7 +64,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 280, depth_cm: 160, height_cm: 85,
     price_krw: 1490000,
     affiliate_url: "https://ohou.se/productions/1234570",
-    source: "ohouse",
   },
   {
     name_ko: "모듈형 소파 세트",
@@ -77,7 +72,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 240, depth_cm: 95, height_cm: 80,
     price_krw: 1200000,
     affiliate_url: "https://ohou.se/productions/1234571",
-    source: "ohouse",
   },
   {
     name_ko: "벨벳 2인 소파",
@@ -86,7 +80,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 150, depth_cm: 80, height_cm: 82,
     price_krw: 580000,
     affiliate_url: "https://ohou.se/productions/1234572",
-    source: "ohouse",
   },
 
   // ── Bed ───────────────────────────────────────────────────────────────────
@@ -97,7 +90,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 168, depth_cm: 215, height_cm: 90,
     price_krw: 450000,
     affiliate_url: "https://ohou.se/productions/2234567",
-    source: "ohouse",
   },
   {
     name_ko: "킹 침대 프레임 (매트리스 미포함)",
@@ -106,7 +98,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 199, depth_cm: 215, height_cm: 90,
     price_krw: 590000,
     affiliate_url: "https://ohou.se/productions/2234568",
-    source: "ohouse",
   },
   {
     name_ko: "싱글 침대 수납형",
@@ -115,7 +106,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 100, depth_cm: 200, height_cm: 85,
     price_krw: 320000,
     affiliate_url: "https://ohou.se/productions/2234569",
-    source: "ohouse",
   },
   {
     name_ko: "더블 가죽 침대",
@@ -124,7 +114,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 150, depth_cm: 215, height_cm: 95,
     price_krw: 720000,
     affiliate_url: "https://ohou.se/productions/2234570",
-    source: "ohouse",
   },
   {
     name_ko: "퀸 수납 침대 프레임",
@@ -133,7 +122,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 168, depth_cm: 215, height_cm: 90,
     price_krw: 680000,
     affiliate_url: "https://ohou.se/productions/2234571",
-    source: "ohouse",
   },
   {
     name_ko: "패밀리 킹 침대 프레임",
@@ -142,7 +130,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 210, depth_cm: 215, height_cm: 90,
     price_krw: 750000,
     affiliate_url: "https://ohou.se/productions/2234572",
-    source: "ohouse",
   },
 
   // ── Desk ──────────────────────────────────────────────────────────────────
@@ -153,7 +140,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 120, depth_cm: 60, height_cm: 75,
     price_krw: 180000,
     affiliate_url: "https://ohou.se/productions/3234567",
-    source: "ohouse",
   },
   {
     name_ko: "L자형 코너 책상",
@@ -162,7 +148,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 160, depth_cm: 140, height_cm: 75,
     price_krw: 290000,
     affiliate_url: "https://ohou.se/productions/3234568",
-    source: "ohouse",
   },
   {
     name_ko: "높이 조절 전동 책상",
@@ -171,7 +156,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 140, depth_cm: 70, height_cm: 125,
     price_krw: 580000,
     affiliate_url: "https://ohou.se/productions/3234569",
-    source: "ohouse",
   },
   {
     name_ko: "콤팩트 미니 책상",
@@ -180,7 +164,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 80, depth_cm: 50, height_cm: 75,
     price_krw: 89000,
     affiliate_url: "https://ohou.se/productions/3234570",
-    source: "ohouse",
   },
   {
     name_ko: "서랍형 원목 책상",
@@ -189,7 +172,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 130, depth_cm: 65, height_cm: 77,
     price_krw: 350000,
     affiliate_url: "https://ohou.se/productions/3234571",
-    source: "ohouse",
   },
 
   // ── Table ─────────────────────────────────────────────────────────────────
@@ -200,7 +182,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 110, depth_cm: 110, height_cm: 76,
     price_krw: 280000,
     affiliate_url: "https://ohou.se/productions/4234567",
-    source: "ohouse",
   },
   {
     name_ko: "6인 직사각 식탁",
@@ -209,7 +190,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 180, depth_cm: 85, height_cm: 76,
     price_krw: 490000,
     affiliate_url: "https://ohou.se/productions/4234568",
-    source: "ohouse",
   },
   {
     name_ko: "마블 패턴 커피 테이블",
@@ -218,7 +198,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 120, depth_cm: 60, height_cm: 45,
     price_krw: 220000,
     affiliate_url: "https://ohou.se/productions/4234569",
-    source: "ohouse",
   },
   {
     name_ko: "원목 사이드 테이블",
@@ -227,7 +206,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 50, depth_cm: 50, height_cm: 55,
     price_krw: 95000,
     affiliate_url: "https://ohou.se/productions/4234570",
-    source: "ohouse",
   },
   {
     name_ko: "높이 조절 다이닝 테이블",
@@ -236,7 +214,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 140, depth_cm: 80, height_cm: 76,
     price_krw: 380000,
     affiliate_url: "https://ohou.se/productions/4234571",
-    source: "ohouse",
   },
   {
     name_ko: "접이식 다용도 테이블",
@@ -245,7 +222,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 120, depth_cm: 60, height_cm: 72,
     price_krw: 120000,
     affiliate_url: "https://ohou.se/productions/4234572",
-    source: "ohouse",
   },
 
   // ── Chair ─────────────────────────────────────────────────────────────────
@@ -256,7 +232,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 45, depth_cm: 50, height_cm: 85,
     price_krw: 65000,
     affiliate_url: "https://ohou.se/productions/5234567",
-    source: "ohouse",
   },
   {
     name_ko: "사무용 메쉬 의자",
@@ -265,7 +240,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 65, depth_cm: 65, height_cm: 120,
     price_krw: 190000,
     affiliate_url: "https://ohou.se/productions/5234568",
-    source: "ohouse",
   },
   {
     name_ko: "게이밍 의자",
@@ -274,7 +248,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 70, depth_cm: 70, height_cm: 130,
     price_krw: 280000,
     affiliate_url: "https://ohou.se/productions/5234569",
-    source: "ohouse",
   },
   {
     name_ko: "원목 의자 2개 세트",
@@ -283,7 +256,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 45, depth_cm: 48, height_cm: 82,
     price_krw: 160000,
     affiliate_url: "https://ohou.se/productions/5234570",
-    source: "ohouse",
   },
   {
     name_ko: "북유럽풍 암체어",
@@ -292,7 +264,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 75, depth_cm: 80, height_cm: 85,
     price_krw: 320000,
     affiliate_url: "https://ohou.se/productions/5234571",
-    source: "ohouse",
   },
   {
     name_ko: "바 스툴 (높은 의자) 2개",
@@ -301,7 +272,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 38, depth_cm: 38, height_cm: 75,
     price_krw: 130000,
     affiliate_url: "https://ohou.se/productions/5234572",
-    source: "ohouse",
   },
 
   // ── Storage ───────────────────────────────────────────────────────────────
@@ -312,7 +282,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 120, depth_cm: 30, height_cm: 180,
     price_krw: 250000,
     affiliate_url: "https://ohou.se/productions/6234567",
-    source: "ohouse",
   },
   {
     name_ko: "4단 옷장",
@@ -321,7 +290,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 150, depth_cm: 55, height_cm: 200,
     price_krw: 590000,
     affiliate_url: "https://ohou.se/productions/6234568",
-    source: "ohouse",
   },
   {
     name_ko: "슬라이딩 도어 옷장",
@@ -330,7 +298,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 180, depth_cm: 60, height_cm: 210,
     price_krw: 890000,
     affiliate_url: "https://ohou.se/productions/6234569",
-    source: "ohouse",
   },
   {
     name_ko: "3단 서랍장",
@@ -339,7 +306,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 80, depth_cm: 45, height_cm: 90,
     price_krw: 190000,
     affiliate_url: "https://ohou.se/productions/6234570",
-    source: "ohouse",
   },
   {
     name_ko: "TV 다이닝 거실장",
@@ -348,7 +314,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 160, depth_cm: 40, height_cm: 50,
     price_krw: 310000,
     affiliate_url: "https://ohou.se/productions/6234571",
-    source: "ohouse",
   },
   {
     name_ko: "신발장 (6단)",
@@ -357,7 +322,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 90, depth_cm: 30, height_cm: 150,
     price_krw: 160000,
     affiliate_url: "https://ohou.se/productions/6234572",
-    source: "ohouse",
   },
   {
     name_ko: "오픈 선반형 책장",
@@ -366,7 +330,6 @@ const PRODUCTS: ProductRow[] = [
     width_cm: 80, depth_cm: 25, height_cm: 160,
     price_krw: 130000,
     affiliate_url: "https://ohou.se/productions/6234573",
-    source: "ohouse",
   },
 ];
 
@@ -374,7 +337,7 @@ async function main() {
   console.log(`Seeding ${PRODUCTS.length} furniture products…`);
 
   const { data, error } = await supabase
-    .from("furniture_products")
+    .from("furniture_catalog")
     .upsert(PRODUCTS, { onConflict: "id", ignoreDuplicates: false })
     .select("id");
 

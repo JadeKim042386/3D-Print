@@ -25,7 +25,7 @@ export const homefixCatalogRouter = router({
     )
     .query(async ({ ctx, input }) => {
       let query = ctx.supabase
-        .from("homefix_furniture")
+        .from("furniture_catalog")
         .select("*", { count: "exact" });
 
       if (input.category)      query = query.eq("category", input.category);
@@ -55,7 +55,7 @@ export const homefixCatalogRouter = router({
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       const { data, error } = await ctx.supabase
-        .from("homefix_furniture")
+        .from("furniture_catalog")
         .select("*")
         .eq("id", input.id)
         .single();
@@ -70,7 +70,7 @@ export const homefixCatalogRouter = router({
   /** List available categories (distinct values from catalog) */
   categories: publicProcedure.query(async ({ ctx }) => {
     const { data, error } = await ctx.supabase
-      .from("homefix_furniture")
+      .from("furniture_catalog")
       .select("category")
       .order("category");
 
@@ -87,7 +87,7 @@ export const homefixCatalogRouter = router({
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       const { data, error } = await ctx.supabase
-        .from("homefix_furniture")
+        .from("furniture_catalog")
         .select("id, name_ko, affiliate_url, price_krw")
         .eq("id", input.id)
         .single();

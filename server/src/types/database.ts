@@ -687,22 +687,26 @@ export type Database = {
         }
         Relationships: []
       }
-      homefix_furniture: {
+      furniture_catalog: {
         Row: {
           id: string
           name_ko: string
           name_en: string | null
           category: string
           brand: string | null
+          width_cm: number
+          depth_cm: number
+          height_cm: number
           width_mm: number
           depth_mm: number
           height_mm: number
+          price_krw: number
           image_url: string | null
+          affiliate_url: string | null
           model_url: string | null
           retailer_id: string | null
-          affiliate_url: string | null
-          price_krw: number | null
           metadata: Json
+          is_active: boolean
           created_at: string
           updated_at: string
         }
@@ -712,15 +716,16 @@ export type Database = {
           name_en?: string | null
           category: string
           brand?: string | null
-          width_mm: number
-          depth_mm: number
-          height_mm: number
+          width_cm: number
+          depth_cm: number
+          height_cm: number
+          price_krw?: number
           image_url?: string | null
+          affiliate_url?: string | null
           model_url?: string | null
           retailer_id?: string | null
-          affiliate_url?: string | null
-          price_krw?: number | null
           metadata?: Json
+          is_active?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -730,15 +735,16 @@ export type Database = {
           name_en?: string | null
           category?: string
           brand?: string | null
-          width_mm?: number
-          depth_mm?: number
-          height_mm?: number
+          width_cm?: number
+          depth_cm?: number
+          height_cm?: number
+          price_krw?: number
           image_url?: string | null
+          affiliate_url?: string | null
           model_url?: string | null
           retailer_id?: string | null
-          affiliate_url?: string | null
-          price_krw?: number | null
           metadata?: Json
+          is_active?: boolean
           created_at?: string
           updated_at?: string
         }

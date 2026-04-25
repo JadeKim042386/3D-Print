@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
 
   try {
     let query = supabase
-      .from("furniture_products")
+      .from("furniture_catalog")
       .select("*")
       .eq("is_active", true)
       .order("name_ko");
