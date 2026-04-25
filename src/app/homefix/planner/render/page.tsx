@@ -32,7 +32,6 @@ function RenderContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isGenerating, setIsGenerating] = useState(false);
-  const [done, setDone] = useState(false);
 
   const corners: RoomPoint[] = (() => {
     try { return JSON.parse(decodeURIComponent(searchParams.get("room") ?? "[]")); }
