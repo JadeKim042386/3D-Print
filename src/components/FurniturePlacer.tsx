@@ -39,6 +39,23 @@ interface Placement {
   furniture?: FurnitureItem;
 }
 
+interface PlacementSuggestion {
+  x_mm: number;
+  y_mm: number;
+  rotation_deg: number;
+  score: number;
+  reasons: string[];
+}
+
+interface AutoPlacePreview {
+  item: FurnitureItem;
+  best: PlacementSuggestion | null;
+  alternatives: PlacementSuggestion[];
+  confidence: number;
+  selectedIndex: number; // 0 = best, 1+ = alternatives[selectedIndex - 1]
+  confirming: boolean;
+}
+
 export interface FurniturePlacerProps {
   projectId: string;
   dims: RoomDimensions;
@@ -133,6 +150,42 @@ function FurnitureThumbnail({ url, name }: { url: string | null; name: string })
   );
 }
 
+// ─── Candidate chip ───────────────────────────────────────────────────────────
+
+function CandidateChip({
+  label,
+  score,
+  selected,
+  onClick,
+}: {
+  label: string;
+  score: number;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+        selected
+          ? "border-orange-400 bg-orange-100 text-orange-700"
+          : "border-gray-200 bg-white text-gray-600 hover:border-gray-400"
+      }`}
+    >
+      <span>{label}</span>
+      <span className={`text-xs ${selected ? "text-orange-500" : "text-gray-400"}`}>
+        {Math.round(score * 100)}점
+      </span>
+      {selected && (
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function FurniturePlacer({ projectId, dims, token }: FurniturePlacerProps) {
@@ -144,6 +197,7 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loadingCatalog, setLoadingCatalog] = useState(false);
   const [addingId, setAddingId] = useState<string | null>(null);
+  const [autoPlacePreview, setAutoPlacePreview] = useState<AutoPlacePreview | null>(null);
 
   const svgRef = useRef<SVGSVGElement>(null);
   const dragRef = useRef<{
@@ -190,7 +244,7 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
               x_mm: p.x_mm as number,
               y_mm: p.y_mm as number,
               rotation_deg: (p.rotation_deg as number) ?? 0,
-              furniture: p.furniture_catalog as FurnitureItem | undefined,
+              furniture: (p.furniture_catalog ?? p.homefix_furniture) as FurnitureItem | undefined,
             })),
           );
         }
@@ -198,32 +252,64 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
       .catch(() => {});
   }, [projectId, token]);
 
-  // ── Add furniture with AI auto-placement ──────────────────────────────────
+  // ── Resolve the currently highlighted suggestion from preview state ────────
+  const getSelectedSuggestion = (preview: AutoPlacePreview): PlacementSuggestion | null => {
+    if (preview.selectedIndex === 0) return preview.best;
+    return preview.alternatives[preview.selectedIndex - 1] ?? null;
+  };
+
+  // ── Click "+ 배치": call autoPlace and open the candidate preview ──────────
   const addFurniture = async (item: FurnitureItem) => {
     setAddingId(item.id);
-    let x_mm: number;
-    let y_mm: number;
-    let rotation_deg = 0;
+    setAutoPlacePreview(null);
 
-    // Try AI auto-placement; fall back to room-center on any error
     try {
-      const autoResult = await trpcQuery(
+      const autoResult = await trpcMutation(
         "homefix.staging.autoPlace",
         { json: { project_id: projectId, furniture_id: item.id, k: 3 } },
         token,
       );
-      if (autoResult?.best) {
-        x_mm = autoResult.best.x_mm;
-        y_mm = autoResult.best.y_mm;
-        rotation_deg = autoResult.best.rotation_deg ?? 0;
-      } else {
-        x_mm = Math.max(0, Math.round((dims.room_width_mm - item.width_mm) / 2));
-        y_mm = Math.max(0, Math.round((dims.room_depth_mm - item.depth_mm) / 2));
-      }
+
+      setAutoPlacePreview({
+        item,
+        best: autoResult?.best ?? null,
+        alternatives: autoResult?.alternatives ?? [],
+        confidence: autoResult?.confidence ?? 0,
+        selectedIndex: 0,
+        confirming: false,
+      });
     } catch {
-      x_mm = Math.max(0, Math.round((dims.room_width_mm - item.width_mm) / 2));
-      y_mm = Math.max(0, Math.round((dims.room_depth_mm - item.depth_mm) / 2));
+      // Network error fallback: place at room center without candidate UI
+      const x_mm = Math.max(0, Math.round((dims.room_width_mm - item.width_mm) / 2));
+      const y_mm = Math.max(0, Math.round((dims.room_depth_mm - item.depth_mm) / 2));
+      try {
+        const result = await trpcMutation(
+          "homefix.staging.addFurniture",
+          { json: { project_id: projectId, furniture_id: item.id, x_mm, y_mm, rotation_deg: 0 } },
+          token,
+        );
+        if (result?.id) {
+          setPlacements((prev) => [
+            ...prev,
+            { id: result.id, furniture_id: item.id, x_mm, y_mm, rotation_deg: 0, furniture: item },
+          ]);
+        }
+      } catch {}
     }
+
+    setAddingId(null);
+  };
+
+  // ── "배치 확정": persist the selected candidate via addFurniture ──────────
+  const confirmPlacement = async () => {
+    if (!autoPlacePreview) return;
+    const suggestion = getSelectedSuggestion(autoPlacePreview);
+    const item = autoPlacePreview.item;
+    const x_mm = suggestion?.x_mm ?? Math.max(0, Math.round((dims.room_width_mm - item.width_mm) / 2));
+    const y_mm = suggestion?.y_mm ?? Math.max(0, Math.round((dims.room_depth_mm - item.depth_mm) / 2));
+    const rotation_deg = suggestion?.rotation_deg ?? 0;
+
+    setAutoPlacePreview((prev) => prev ? { ...prev, confirming: true } : null);
 
     try {
       const result = await trpcMutation(
@@ -238,7 +324,8 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
         ]);
       }
     } catch {}
-    setAddingId(null);
+
+    setAutoPlacePreview(null);
   };
 
   // ── Rotate selected item 90° CW ───────────────────────────────────────────
@@ -327,12 +414,23 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
     ).catch(() => {});
   }, [token]);
 
+  // ── Derived: ghost suggestion + flat candidate list ───────────────────────
+  const ghostSuggestion = autoPlacePreview ? getSelectedSuggestion(autoPlacePreview) : null;
+  const allCandidates: PlacementSuggestion[] = autoPlacePreview
+    ? [
+        ...(autoPlacePreview.best ? [autoPlacePreview.best] : []),
+        ...autoPlacePreview.alternatives,
+      ]
+    : [];
+  const lowConfidence =
+    autoPlacePreview !== null &&
+    (autoPlacePreview.best === null || autoPlacePreview.confidence < 0.4);
+
   // ─── Render ──────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col gap-6">
       {/* ── Furniture catalog ── */}
       <div>
-        {/* Search input */}
         <div className="mb-3 relative">
           <input
             type="search"
@@ -351,7 +449,6 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
           </svg>
         </div>
 
-        {/* Category filter */}
         <div className="mb-3 flex flex-wrap gap-2">
           {CATEGORIES.map((c) => (
             <button
@@ -369,7 +466,6 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
           ))}
         </div>
 
-        {/* Catalog grid */}
         <div className="grid grid-cols-2 gap-3 overflow-y-auto sm:grid-cols-3" style={{ maxHeight: 260 }}>
           {loadingCatalog ? (
             <p className="col-span-3 py-6 text-center text-sm text-gray-400">불러오는 중…</p>
@@ -397,7 +493,7 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
                   <button
                     type="button"
                     onClick={() => addFurniture(item)}
-                    disabled={addingId === item.id}
+                    disabled={addingId === item.id || autoPlacePreview !== null}
                     className="min-h-[28px] rounded-lg bg-gray-900 px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-gray-800 disabled:opacity-50"
                   >
                     {addingId === item.id ? "배치 중…" : "+ 배치"}
@@ -419,8 +515,13 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
                 {placements.length}개
               </span>
             )}
+            {autoPlacePreview && (
+              <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-600">
+                가배치 미리보기
+              </span>
+            )}
           </div>
-          {selectedId && (
+          {selectedId && !autoPlacePreview && (
             <div className="flex gap-2">
               <button
                 type="button"
@@ -511,15 +612,140 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
                 </g>
               );
             })}
+
+            {/* Ghost: auto-placement preview (dashed orange, semi-transparent) */}
+            {autoPlacePreview && ghostSuggestion && (() => {
+              const f = autoPlacePreview.item;
+              const w = f.width_mm * scale;
+              const d = f.depth_mm * scale;
+              const px = ghostSuggestion.x_mm * scale + ox;
+              const py = ghostSuggestion.y_mm * scale + oy;
+              const cx = px + w / 2;
+              const cy = py + d / 2;
+              return (
+                <g
+                  key="ghost"
+                  transform={`rotate(${ghostSuggestion.rotation_deg}, ${cx.toFixed(1)}, ${cy.toFixed(1)})`}
+                  style={{ pointerEvents: "none" }}
+                >
+                  <rect
+                    x={px}
+                    y={py}
+                    width={w}
+                    height={d}
+                    rx={3}
+                    fill="rgba(251,146,60,0.22)"
+                    stroke="#f97316"
+                    strokeWidth={2}
+                    strokeDasharray="6 3"
+                  />
+                  {w > 28 && d > 18 && (
+                    <text
+                      x={cx}
+                      y={cy + 4}
+                      textAnchor="middle"
+                      fontSize={Math.max(8, Math.min(11, w / 7))}
+                      fill="#ea580c"
+                      className="pointer-events-none"
+                    >
+                      {f.name_ko.slice(0, 6)}
+                    </text>
+                  )}
+                </g>
+              );
+            })()}
           </svg>
         </div>
 
-        {placements.length === 0 && (
+        {/* ── Auto-placement candidate panel ── */}
+        {autoPlacePreview && (
+          <div className="rounded-2xl border border-orange-200 bg-orange-50 p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <span className="text-sm font-semibold text-orange-800">
+                {autoPlacePreview.item.name_ko} 자동 배치
+              </span>
+              {autoPlacePreview.best && (
+                <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-600">
+                  신뢰도 {Math.round(autoPlacePreview.confidence * 100)}%
+                </span>
+              )}
+            </div>
+
+            {/* Low confidence / no result warning */}
+            {lowConfidence && (
+              <div className="mb-3 flex items-start gap-2 rounded-xl bg-amber-100 p-3">
+                <svg
+                  width="16" height="16" viewBox="0 0 24 24" fill="none"
+                  stroke="#d97706" strokeWidth="2" className="mt-0.5 shrink-0"
+                >
+                  <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+                <p className="text-xs leading-relaxed text-amber-800">
+                  빈 자리가 부족합니다 — 가구를 옮기거나 더 작은 모델을 시도해 보세요.
+                </p>
+              </div>
+            )}
+
+            {/* Candidate chips */}
+            {allCandidates.length > 0 && (
+              <div className="mb-3">
+                <p className="mb-2 text-xs text-orange-700">후보 선택:</p>
+                <div className="flex flex-wrap gap-2">
+                  {allCandidates.map((s, i) => (
+                    <CandidateChip
+                      key={i}
+                      label={i === 0 ? "최적 배치" : `후보 ${i}`}
+                      score={s.score}
+                      selected={autoPlacePreview.selectedIndex === i}
+                      onClick={() =>
+                        setAutoPlacePreview((prev) =>
+                          prev ? { ...prev, selectedIndex: i } : null,
+                        )
+                      }
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Reason text for the currently selected candidate */}
+            {ghostSuggestion?.reasons && ghostSuggestion.reasons.length > 0 && (
+              <p className="mb-3 text-xs leading-relaxed text-orange-700">
+                💡 {ghostSuggestion.reasons.slice(0, 2).join(" · ")}
+              </p>
+            )}
+
+            {/* Confirm / Cancel */}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setAutoPlacePreview(null)}
+                className="min-h-[36px] flex-1 rounded-xl border border-orange-300 bg-white px-4 py-2 text-sm font-medium text-orange-700 transition-colors hover:bg-orange-100"
+              >
+                취소
+              </button>
+              {allCandidates.length > 0 && (
+                <button
+                  type="button"
+                  onClick={confirmPlacement}
+                  disabled={autoPlacePreview.confirming}
+                  className="min-h-[36px] flex-[2] rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-600 disabled:opacity-60"
+                >
+                  {autoPlacePreview.confirming ? "배치 중…" : "이 위치에 배치 확정"}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {!autoPlacePreview && placements.length === 0 && (
           <p className="text-center text-xs text-gray-400">
             위 카탈로그에서 가구를 선택해 AI 자동 배치하세요
           </p>
         )}
-        {placements.length > 0 && (
+        {!autoPlacePreview && placements.length > 0 && (
           <p className="text-center text-xs text-gray-400">
             가구를 드래그하여 이동 · 클릭하여 선택 후 회전/삭제
           </p>
