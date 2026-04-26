@@ -468,9 +468,26 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
 
   const onItemPointerDown = (e: React.PointerEvent, placementId: string) => {
     e.stopPropagation();
-    e.preventDefault();
+    // Do NOT call e.preventDefault() here — it cancels the synthetic click event
+    // on desktop browsers, making suppressNextClick unreliable. The SVG's
+    // touch-action:none / user-select:none classes already prevent scroll and
+    // text-selection side-effects without suppressing click generation.
+
+    // Set selection and suppress the follow-up SVG onClick *before* any code
+    // that could throw — so selection always takes effect even if the drag
+    // setup below fails (e.g. when a newly-placed item isn't in the placements
+    // closure yet due to a stale-ref edge case).
+    setSelectedId(placementId);
+    suppressNextClick.current = true;
+
     const { x, y } = getSvgXY(e);
-    const p = placements.find((pl) => pl.id === placementId)!;
+    const p = placements.find((pl) => pl.id === placementId);
+    if (!p) {
+      // Safety: item not found — selection is already set; just capture so the
+      // follow-up pointerup/click go to the SVG and are handled correctly.
+      svgRef.current?.setPointerCapture(e.pointerId);
+      return;
+    }
     dragRef.current = {
       placementId,
       startSvgX: x,
@@ -481,7 +498,6 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
       curYmm: p.y_mm,
       hasMoved: false,
     };
-    setSelectedId(placementId);
     svgRef.current?.setPointerCapture(e.pointerId);
   };
 
@@ -703,6 +719,7 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
               return (
                 <g
                   key={p.id}
+                  data-placement-id={p.id}
                   transform={`rotate(${p.rotation_deg}, ${cx.toFixed(1)}, ${cy.toFixed(1)})`}
                   style={{ cursor: "move" }}
                   onPointerDown={(e) => onItemPointerDown(e, p.id)}

@@ -181,16 +181,120 @@ if (!found) {
   process.exit(1);
 }
 
-// cleanup placement
-if (found) {
-  await fetch("http://localhost:8000/trpc/homefix.staging.removeFurniture", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-    body: JSON.stringify({ placement_id: found.id }),
-  });
-  console.log(`[cleanup] removed placement ${found.id}`);
+// ── Steps 5–7: DPR-124 — selection, rotate, delete (placement click → setSelectedId) ──
+
+// Step 5. Click the newly placed <g> using its exact bounding rect centre.
+// Each placed furniture <g> carries data-placement-id so we can find it
+// without relying on fragile text or order heuristics.
+const placementRect = await page.evaluate((placementId) => {
+  const g = document.querySelector(`[data-placement-id="${placementId}"]`);
+  if (!g) return null;
+  const r = g.getBoundingClientRect();
+  return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, h: r.height };
+}, found.id);
+
+if (!placementRect || placementRect.w < 1 || placementRect.h < 1) {
+  console.error(`[fail] step 5 — placement <g data-placement-id="${found.id}"> not found or zero-size in DOM`);
+  await browser.close();
+  process.exit(1);
+}
+console.log(`[step 5] placement rect centre (${placementRect.x.toFixed(1)}, ${placementRect.y.toFixed(1)}) size ${placementRect.w.toFixed(1)}×${placementRect.h.toFixed(1)}`);
+
+// Use mouse.click so real pointer events fire (not synthetic DOM click which
+// skips the pointerdown → setSelectedId path we're testing here).
+await page.mouse.click(placementRect.x, placementRect.y);
+await new Promise((r) => setTimeout(r, 400));
+
+// Step 6. Verify the selection UI appeared — either the "↻ 회전" button or
+// the placement rect switching to the blue stroke (#2563eb).
+const selectionVisible = await page.evaluate((placementId) => {
+  const rotateBtn = Array.from(document.querySelectorAll("button"))
+    .find((b) => /↻\s*회전/.test(b.textContent ?? ""));
+  if (rotateBtn && !rotateBtn.disabled) return { via: "button" };
+
+  // Fallback: check SVG rect stroke colour inside the clicked <g>
+  const g = document.querySelector(`[data-placement-id="${placementId}"]`);
+  if (g) {
+    const rect = g.querySelector("rect");
+    if (rect) {
+      const stroke = rect.getAttribute("stroke") ?? getComputedStyle(rect).stroke;
+      if (stroke && stroke.includes("2563eb")) return { via: "stroke" };
+    }
+  }
+  return null;
+}, found.id);
+
+if (!selectionVisible) {
+  console.error("[fail] step 6 — placement was clicked but selection UI (↻ 회전 button or blue stroke) did not appear");
+  console.error("network 4xx/5xx during run:", networkErrors);
+  await browser.close();
+  process.exit(1);
+}
+console.log(`[step 6] selection visible via: ${selectionVisible.via}`);
+
+// Step 7a. Click "↻ 회전" and confirm the placement rotation changed.
+const rotateBtn = await page.evaluate(() => {
+  const b = Array.from(document.querySelectorAll("button"))
+    .find((x) => /↻\s*회전/.test(x.textContent ?? ""));
+  if (b) { b.click(); return true; }
+  return false;
+});
+if (!rotateBtn) {
+  console.error("[fail] step 7a — ↻ 회전 button not found after selection");
+  await browser.close();
+  process.exit(1);
+}
+await new Promise((r) => setTimeout(r, 800));
+console.log("[step 7a] rotation button clicked");
+
+// Verify rotation was applied — the transform on the <g> should change.
+const rotated = await page.evaluate((placementId) => {
+  const g = document.querySelector(`[data-placement-id="${placementId}"]`);
+  if (!g) return null;
+  return g.getAttribute("transform") ?? "";
+}, found.id);
+// rotation_deg starts at 0; after one click it should be 90
+const rotationApplied = rotated && rotated.includes("rotate(90");
+console.log(`[step 7a] post-rotate transform="${rotated}" rotation_applied=${rotationApplied}`);
+if (!rotationApplied) {
+  console.error("[fail] step 7a — rotation did not update the <g> transform to rotate(90,…)");
+  await browser.close();
+  process.exit(1);
 }
 
-console.log(`\n✅ golden path passed. network 4xx/5xx during run: ${networkErrors.length}`);
+// Step 7b. Click the newly-placed item again to re-select, then delete it.
+// (Rotation deselects; click again to bring back the action bar.)
+await page.mouse.click(placementRect.x, placementRect.y);
+await new Promise((r) => setTimeout(r, 400));
+
+const deleteBtn = await page.evaluate(() => {
+  const b = Array.from(document.querySelectorAll("button"))
+    .find((x) => x.textContent?.includes("삭제"));
+  if (b) { b.click(); return true; }
+  return false;
+});
+if (!deleteBtn) {
+  console.error("[fail] step 7b — 삭제 button not found after re-selection");
+  await browser.close();
+  process.exit(1);
+}
+await new Promise((r) => setTimeout(r, 800));
+console.log("[step 7b] delete button clicked");
+
+// Placement should be removed from DOM
+const stillInDom = await page.evaluate((placementId) =>
+  !!document.querySelector(`[data-placement-id="${placementId}"]`),
+found.id);
+if (stillInDom) {
+  console.error("[fail] step 7b — placement <g> still in DOM after delete");
+  await browser.close();
+  process.exit(1);
+}
+console.log("[step 7b] placement removed from DOM — delete confirmed");
+
+// Placement was deleted via UI; API cleanup is only needed if delete failed above
+// (we already exited on failure). Skip redundant API removeFurniture call here.
+
+console.log(`\n✅ golden path passed (incl. DPR-124 selection steps). network 4xx/5xx during run: ${networkErrors.length}`);
 if (networkErrors.length) console.log(JSON.stringify(networkErrors, null, 2));
 await browser.close();
