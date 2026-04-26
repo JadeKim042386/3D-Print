@@ -127,17 +127,101 @@ async function trpcMutation(path: string, body: unknown, token: string) {
 
 // ─── Thumbnail placeholder ────────────────────────────────────────────────────
 
-function FurnitureThumbnail({ url, name }: { url: string | null; name: string }) {
+const CATEGORY_KO: Record<string, string> = {
+  sofa: "소파", 소파: "소파",
+  chair: "의자", 의자: "의자",
+  table: "테이블", "식탁/의자": "식탁/의자",
+  desk: "책상", 책상: "책상",
+  bed: "침대", 침대: "침대",
+  storage: "수납장", 수납장: "수납장",
+  "TV장": "TV장",
+  주방가구: "주방가구",
+};
+
+function CategoryIcon({ category }: { category: string }) {
+  const c = category.toLowerCase();
+  if (c === "sofa" || c === "소파") {
+    return (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+        <path d="M3 10V8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2" />
+        <path d="M1 12a2 2 0 0 1 2-2h18a2 2 0 0 1 2 2v4H1v-4Z" />
+        <path d="M4 16v2M20 16v2" />
+      </svg>
+    );
+  }
+  if (c === "bed" || c === "침대") {
+    return (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+        <path d="M2 9V4a1 1 0 0 1 1-1h18a1 1 0 0 1 1 1v5" />
+        <rect x="2" y="9" width="20" height="9" rx="1" />
+        <path d="M4 18v2M20 18v2M2 13h20" />
+      </svg>
+    );
+  }
+  if (c === "chair" || c === "의자") {
+    return (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+        <path d="M5 10V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v5" />
+        <rect x="3" y="10" width="18" height="4" rx="1" />
+        <path d="M6 14v5M18 14v5M6 17h12" />
+      </svg>
+    );
+  }
+  if (c === "desk" || c === "책상") {
+    return (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+        <rect x="2" y="10" width="20" height="3" rx="1" />
+        <path d="M5 13v7M19 13v7M6 5h12v5H6z" />
+      </svg>
+    );
+  }
+  if (c === "table" || c === "식탁/의자") {
+    return (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+        <rect x="2" y="8" width="20" height="3" rx="1" />
+        <path d="M6 11v7M18 11v7" />
+      </svg>
+    );
+  }
+  if (c === "storage" || c === "수납장" || c === "tv장") {
+    return (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+        <rect x="2" y="3" width="20" height="18" rx="1" />
+        <path d="M2 9h20M2 15h20" />
+        <circle cx="12" cy="6" r="0.75" fill="currentColor" stroke="none" />
+        <circle cx="12" cy="12" r="0.75" fill="currentColor" stroke="none" />
+        <circle cx="12" cy="18" r="0.75" fill="currentColor" stroke="none" />
+      </svg>
+    );
+  }
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      <rect x="2" y="7" width="20" height="14" rx="2" />
+      <path d="M16 7V5a2 2 0 0 0-4 0v2M8 7V5a2 2 0 0 1 4 0" />
+    </svg>
+  );
+}
+
+function FurnitureThumbnail({
+  url,
+  name,
+  category,
+}: {
+  url: string | null;
+  name: string;
+  category?: string;
+}) {
   const [failed, setFailed] = useState(false);
   const proxyUrl = url ? `/api/img-proxy?u=${encodeURIComponent(url)}` : null;
   if (!proxyUrl || failed) {
+    const label = category ? (CATEGORY_KO[category] ?? category) : "가구";
     return (
-      <div className="flex h-16 w-full items-center justify-center rounded-lg bg-gray-100">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.5">
-          <rect x="2" y="7" width="20" height="14" rx="2" />
-          <path d="M16 7V5a2 2 0 0 0-4 0v2" />
-          <path d="M8 7V5a2 2 0 0 1 4 0" />
-        </svg>
+      <div
+        data-testid="fallback"
+        className="flex h-16 w-full flex-col items-center justify-center gap-1 rounded-lg bg-gray-50 text-gray-400"
+      >
+        <CategoryIcon category={category ?? ""} />
+        <span className="text-[10px] leading-none">{label}</span>
       </div>
     );
   }
@@ -502,7 +586,7 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
                 key={item.id}
                 className="flex flex-col gap-1.5 rounded-xl border border-gray-200 bg-white p-3"
               >
-                <FurnitureThumbnail url={item.image_url} name={item.name_ko} />
+                <FurnitureThumbnail url={item.image_url} name={item.name_ko} category={item.category} />
                 <p className="line-clamp-2 text-xs font-semibold leading-tight text-gray-900">
                   {item.name_ko}
                 </p>
