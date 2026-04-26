@@ -315,7 +315,7 @@ describe("DPR-118 regression — empty room, non-centred best pose", () => {
     width_mm: number;
     depth_mm: number;
     height_mm: number;
-    room: typeof SMALL_ROOM;
+    room: { readonly w: number; readonly d: number };
   }> = [
     { label: "소파 small",  category: "소파", width_mm: 2000, depth_mm: 850,  height_mm: 850,  room: SMALL_ROOM },
     { label: "소파 medium", category: "소파", width_mm: 2200, depth_mm: 900,  height_mm: 850,  room: MEDIUM_ROOM },
