@@ -11,14 +11,15 @@
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !serviceKey) {
-  console.error("Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+if (!supabaseUrl || !supabaseKey) {
+  console.error("Missing NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY/NEXT_PUBLIC_SUPABASE_ANON_KEY");
   process.exit(1);
 }
 
-const supabase = createClient(supabaseUrl, serviceKey);
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 type Row = { id: string; name_ko: string; image_url: string | null };
 
