@@ -285,3 +285,109 @@ describe("auto-placement v1 — non-rectangular rooms", () => {
     expect(elapsed).toBeLessThan(100);
   });
 });
+
+// ─── DPR-118: empty-room best-pose regression ────────────────────────────────
+// Verifies that autoPlace always returns a non-null best for realistic empty
+// rooms and that the chosen position is NOT stuck at the room centroid (±200mm).
+// This guards against the FE "always-centred" symptom reported in DPR-115.
+
+const CENTROID_TOLERANCE_MM = 200;
+
+function notNearCentroid(
+  x_mm: number,
+  y_mm: number,
+  roomW: number,
+  roomD: number,
+) {
+  const cx = roomW / 2;
+  const cy = roomD / 2;
+  return Math.hypot(x_mm - cx, y_mm - cy) > CENTROID_TOLERANCE_MM;
+}
+
+describe("DPR-118 regression — empty room, non-centred best pose", () => {
+  const SMALL_ROOM = { w: 3000, d: 3000 } as const;
+  const MEDIUM_ROOM = { w: 4500, d: 5000 } as const;
+
+  // Wall-aligned categories (소파, 침대) must NOT land near the centroid.
+  const wallAlignedCases: Array<{
+    label: string;
+    category: "소파" | "침대";
+    width_mm: number;
+    depth_mm: number;
+    height_mm: number;
+    room: typeof SMALL_ROOM;
+  }> = [
+    { label: "소파 small",  category: "소파", width_mm: 2000, depth_mm: 850,  height_mm: 850,  room: SMALL_ROOM },
+    { label: "소파 medium", category: "소파", width_mm: 2200, depth_mm: 900,  height_mm: 850,  room: MEDIUM_ROOM },
+    { label: "침대 small",  category: "침대", width_mm: 1100, depth_mm: 2000, height_mm: 500,  room: SMALL_ROOM },
+    { label: "침대 medium", category: "침대", width_mm: 1600, depth_mm: 2000, height_mm: 700,  room: MEDIUM_ROOM },
+  ];
+
+  for (const c of wallAlignedCases) {
+    it(`${c.label} — best is non-null and not at room centre`, () => {
+      const room = rectRoom(c.room.w, c.room.d);
+      const result = autoPlace({
+        roomPolygon: room,
+        existing: [],
+        candidate: { width_mm: c.width_mm, depth_mm: c.depth_mm, height_mm: c.height_mm, category: c.category },
+      });
+      expect(result.best).not.toBeNull();
+      expect(
+        notNearCentroid(result.best!.x_mm, result.best!.y_mm, c.room.w, c.room.d),
+      ).toBe(true);
+    });
+  }
+
+  // 식탁/의자 intentionally biases toward centroid — just verify it returns a result.
+  it("식탁 small (3000×3000) — best is non-null (centroid placement is expected)", () => {
+    const room = rectRoom(3000, 3000);
+    const result = autoPlace({
+      roomPolygon: room,
+      existing: [],
+      candidate: { width_mm: 1200, depth_mm: 800, height_mm: 750, category: "식탁/의자" },
+    });
+    expect(result.best).not.toBeNull();
+    expect(result.confidence).toBeGreaterThan(0);
+  });
+
+  it("식탁 medium (4500×5000) — best is non-null (centroid placement is expected)", () => {
+    const room = rectRoom(4500, 5000);
+    const result = autoPlace({
+      roomPolygon: room,
+      existing: [],
+      candidate: { width_mm: 1400, depth_mm: 800, height_mm: 750, category: "식탁/의자" },
+    });
+    expect(result.best).not.toBeNull();
+    expect(result.confidence).toBeGreaterThan(0);
+  });
+
+  it("침대 1100×2000 in 4500×5000 — best is wall-aligned, not centred", () => {
+    const room = rectRoom(4500, 5000);
+    const result = autoPlace({
+      roomPolygon: room,
+      existing: [],
+      candidate: { width_mm: 1100, depth_mm: 2000, height_mm: 500, category: "침대" },
+    });
+    expect(result.best).not.toBeNull();
+    expect(notNearCentroid(result.best!.x_mm, result.best!.y_mm, 4500, 5000)).toBe(true);
+    // Bed must be wall-aligned (close to one wall)
+    const { x_mm, y_mm } = result.best!;
+    const minWallDist = Math.min(x_mm, 4500 - x_mm, y_mm, 5000 - y_mm);
+    // Centre of a wall-aligned 2000mm-deep bed sits ~1000mm from its back wall
+    expect(minWallDist).toBeLessThanOrEqual(1100);
+  });
+
+  it("L-shaped room — best is non-null and not at centroid for sofa", () => {
+    const room = lShapedRoom(); // 4000×4000 with 1500×1500 notch
+    const result = autoPlace({
+      roomPolygon: room,
+      existing: [],
+      candidate: { width_mm: 2000, depth_mm: 850, height_mm: 850, category: "소파" },
+    });
+    expect(result.best).not.toBeNull();
+    // L-room centroid ≈ (1750, 1750) — best should be clearly off-centre
+    expect(
+      notNearCentroid(result.best!.x_mm, result.best!.y_mm, 4000, 4000),
+    ).toBe(true);
+  });
+});

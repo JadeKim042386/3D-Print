@@ -415,18 +415,44 @@ export const homefixStagingRouter = router({
         }
       }
 
+      const candidate = {
+        width_mm: candidateRes.data.width_mm,
+        depth_mm: candidateRes.data.depth_mm,
+        height_mm: candidateRes.data.height_mm,
+        category: candidateRes.data.category,
+      };
+
+      console.info(
+        "[autoPlace] input project_id=%s furniture_id=%s room=%dx%d l_shape=%s existing=%d candidate=%s/%dx%d k=%d clearance_mm=%d",
+        input.project_id,
+        input.furniture_id,
+        projectRes.data.room_width_mm,
+        projectRes.data.room_depth_mm,
+        projectRes.data.l_width_mm ? `${projectRes.data.l_width_mm}x${projectRes.data.l_depth_mm}` : "none",
+        existing.length,
+        candidate.category,
+        candidate.width_mm,
+        candidate.depth_mm,
+        input.k,
+        input.clearance_mm,
+      );
+
       const result = autoPlace({
         roomPolygon: polygon,
         existing,
-        candidate: {
-          width_mm: candidateRes.data.width_mm,
-          depth_mm: candidateRes.data.depth_mm,
-          height_mm: candidateRes.data.height_mm,
-          category: candidateRes.data.category,
-        },
+        candidate,
         k: input.k,
         clearanceMm: input.clearance_mm,
       });
+
+      console.info(
+        "[autoPlace] result confidence=%.3f best=%s alternatives=%d",
+        result.confidence,
+        result.best
+          ? `(${Math.round(result.best.x_mm)},${Math.round(result.best.y_mm)},rot=${result.best.rotation_deg})`
+          : "null",
+        result.alternatives.length,
+      );
 
       return {
         best: result.best,
