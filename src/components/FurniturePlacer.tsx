@@ -129,7 +129,8 @@ async function trpcMutation(path: string, body: unknown, token: string) {
 
 function FurnitureThumbnail({ url, name }: { url: string | null; name: string }) {
   const [failed, setFailed] = useState(false);
-  if (!url || failed) {
+  const proxyUrl = url ? `/api/img-proxy?u=${encodeURIComponent(url)}` : null;
+  if (!proxyUrl || failed) {
     return (
       <div className="flex h-16 w-full items-center justify-center rounded-lg bg-gray-100">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.5">
@@ -142,8 +143,11 @@ function FurnitureThumbnail({ url, name }: { url: string | null; name: string })
   }
   return (
     <img
-      src={url}
+      src={proxyUrl}
       alt={name}
+      referrerPolicy="no-referrer"
+      loading="lazy"
+      decoding="async"
       onError={() => setFailed(true)}
       className="h-16 w-full rounded-lg object-cover"
     />
