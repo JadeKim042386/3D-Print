@@ -234,7 +234,7 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
     if (category !== "전체") inputObj.category = category;
     if (debouncedSearch.trim()) inputObj.query = debouncedSearch.trim();
 
-    trpcQuery("homefix.catalog.list", { json: inputObj }, token)
+    trpcQuery("homefix.catalog.list", inputObj, token)
       .then((result) => setCatalog(result?.items ?? []))
       .catch(() => {})
       .finally(() => setLoadingCatalog(false));
@@ -242,7 +242,7 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
 
   // ── Load existing placements for this project ──────────────────────────────
   useEffect(() => {
-    trpcQuery("homefix.staging.get", { json: { id: projectId } }, token)
+    trpcQuery("homefix.staging.get", { id: projectId }, token)
       .then((result) => {
         if (Array.isArray(result?.placements)) {
           setPlacements(
@@ -275,7 +275,7 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
     try {
       const autoResult = await trpcQuery(
         "homefix.staging.autoPlace",
-        { json: { project_id: projectId, furniture_id: item.id, k: 3, clearance_mm: 50 } },
+        { project_id: projectId, furniture_id: item.id, k: 3, clearance_mm: 50 },
         token,
       );
 
@@ -321,7 +321,7 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
     try {
       const result = await trpcMutation(
         "homefix.staging.addFurniture",
-        { json: { project_id: projectId, furniture_id: item.id, x_mm, y_mm, rotation_deg } },
+        { project_id: projectId, furniture_id: item.id, x_mm, y_mm, rotation_deg },
         token,
       );
       if (result?.id) {
@@ -346,7 +346,7 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
     );
     await trpcMutation(
       "homefix.staging.updatePlacement",
-      { json: { placement_id: selectedId, rotation_deg: newRot } },
+      { placement_id: selectedId, rotation_deg: newRot },
       token,
     ).catch(() => {});
   };
@@ -359,7 +359,7 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
     setSelectedId(null);
     await trpcMutation(
       "homefix.staging.removeFurniture",
-      { json: { placement_id: id } },
+      { placement_id: id },
       token,
     ).catch(() => {});
   };
@@ -432,7 +432,7 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
     if (!hasMoved) return;
     await trpcMutation(
       "homefix.staging.updatePlacement",
-      { json: { placement_id: placementId, x_mm: curXmm, y_mm: curYmm } },
+      { placement_id: placementId, x_mm: curXmm, y_mm: curYmm },
       token,
     ).catch(() => {});
   }, [token]);

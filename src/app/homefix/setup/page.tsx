@@ -49,7 +49,7 @@ async function createStagingProject(
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ json: input }),
+    body: JSON.stringify(input),
   });
 
   if (!res.ok) {
@@ -160,7 +160,7 @@ export default function HomefixSetupPage() {
       const res = await fetch(`${API_BASE_URL}/trpc/homefix.render.trigger`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ json: { project_id: projectId, camera_preset: camera } }),
+        body: JSON.stringify({ project_id: projectId, camera_preset: camera }),
       });
       if (!res.ok) {
         const msg = await res.text().catch(() => res.statusText);
