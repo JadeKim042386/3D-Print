@@ -198,6 +198,7 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
   const [loadingCatalog, setLoadingCatalog] = useState(false);
   const [addingId, setAddingId] = useState<string | null>(null);
   const [autoPlacePreview, setAutoPlacePreview] = useState<AutoPlacePreview | null>(null);
+  const [autoPlaceError, setAutoPlaceError] = useState<string | null>(null);
 
   const svgRef = useRef<SVGSVGElement>(null);
   const dragRef = useRef<{
@@ -265,6 +266,7 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
   const addFurniture = async (item: FurnitureItem) => {
     setAddingId(item.id);
     setAutoPlacePreview(null);
+    setAutoPlaceError(null);
 
     try {
       const autoResult = await trpcQuery(
@@ -273,31 +275,28 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
         token,
       );
 
-      setAutoPlacePreview({
-        item,
-        best: autoResult?.best ?? null,
-        alternatives: autoResult?.alternatives ?? [],
-        confidence: autoResult?.confidence ?? 0,
-        selectedIndex: 0,
-        confirming: false,
-      });
-    } catch {
-      // Network error fallback: place at room center without candidate UI
-      const x_mm = Math.max(0, Math.round((dims.room_width_mm - item.width_mm) / 2));
-      const y_mm = Math.max(0, Math.round((dims.room_depth_mm - item.depth_mm) / 2));
-      try {
-        const result = await trpcMutation(
-          "homefix.staging.addFurniture",
-          { json: { project_id: projectId, furniture_id: item.id, x_mm, y_mm, rotation_deg: 0 } },
-          token,
-        );
-        if (result?.id) {
-          setPlacements((prev) => [
-            ...prev,
-            { id: result.id, furniture_id: item.id, x_mm, y_mm, rotation_deg: 0, furniture: item },
-          ]);
-        }
-      } catch {}
+      const best: PlacementSuggestion | null = autoResult?.best ?? null;
+      const alternatives: PlacementSuggestion[] = autoResult?.alternatives ?? [];
+
+      if (best === null && alternatives.length === 0) {
+        setAutoPlaceError("빈 자리가 부족합니다 — 가구를 옮기거나 더 작은 모델을 시도해 보세요.");
+      } else {
+        setAutoPlacePreview({
+          item,
+          best,
+          alternatives,
+          confidence: autoResult?.confidence ?? 0,
+          selectedIndex: 0,
+          confirming: false,
+        });
+      }
+    } catch (err) {
+      console.error(
+        "[autoPlace] 자동 배치 호출 실패 — project_id:", projectId,
+        "furniture_id:", item.id,
+        "error:", err,
+      );
+      setAutoPlaceError("자동 배치를 불러오는데 실패했습니다. 네트워크 상태를 확인해 주세요.");
     }
 
     setAddingId(null);
@@ -307,10 +306,11 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
   const confirmPlacement = async () => {
     if (!autoPlacePreview) return;
     const suggestion = getSelectedSuggestion(autoPlacePreview);
+    if (!suggestion) return;
     const item = autoPlacePreview.item;
-    const x_mm = suggestion?.x_mm ?? Math.max(0, Math.round((dims.room_width_mm - item.width_mm) / 2));
-    const y_mm = suggestion?.y_mm ?? Math.max(0, Math.round((dims.room_depth_mm - item.depth_mm) / 2));
-    const rotation_deg = suggestion?.rotation_deg ?? 0;
+    const x_mm = suggestion.x_mm;
+    const y_mm = suggestion.y_mm;
+    const rotation_deg = suggestion.rotation_deg ?? 0;
 
     setAutoPlacePreview((prev) => prev ? { ...prev, confirming: true } : null);
 
@@ -762,12 +762,33 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
           </div>
         )}
 
-        {!autoPlacePreview && placements.length === 0 && (
+        {autoPlaceError && (
+          <div className="flex items-start gap-2 rounded-xl bg-red-50 p-3 text-xs leading-relaxed text-red-700">
+            <svg
+              width="15" height="15" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2" className="mt-0.5 shrink-0"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <span>{autoPlaceError}</span>
+            <button
+              type="button"
+              onClick={() => setAutoPlaceError(null)}
+              className="ml-auto shrink-0 text-red-400 hover:text-red-600"
+              aria-label="닫기"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+        {!autoPlacePreview && !autoPlaceError && placements.length === 0 && (
           <p className="text-center text-xs text-gray-400">
             위 카탈로그에서 가구를 선택해 AI 자동 배치하세요
           </p>
         )}
-        {!autoPlacePreview && placements.length > 0 && (
+        {!autoPlacePreview && !autoPlaceError && placements.length > 0 && (
           <p className="text-center text-xs text-gray-400">
             가구를 드래그하여 이동 · 클릭하여 선택 후 회전/삭제
           </p>
