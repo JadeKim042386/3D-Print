@@ -44,3 +44,49 @@ export const RULES: Record<FurnitureCategory, CategoryRule> = {
 export function ruleFor(category: FurnitureCategory): CategoryRule {
   return RULES[category] ?? RULES["기타"];
 }
+
+const CATEGORY_ALIASES: Record<string, FurnitureCategory> = {
+  // Korean canonical (passthrough)
+  "소파": "소파",
+  "침대": "침대",
+  "식탁/의자": "식탁/의자",
+  "수납장": "수납장",
+  "TV장": "TV장",
+  "책상": "책상",
+  "주방가구": "주방가구",
+  "욕실가구": "욕실가구",
+  "기타": "기타",
+  // Korean loose forms
+  "의자": "식탁/의자",
+  "테이블": "식탁/의자",
+  "식탁": "식탁/의자",
+  "수납": "수납장",
+  "tv": "TV장",
+  "tv장": "TV장",
+  // English aliases (catalog seed currently uses these)
+  "sofa": "소파",
+  "couch": "소파",
+  "bed": "침대",
+  "table": "식탁/의자",
+  "chair": "식탁/의자",
+  "dining": "식탁/의자",
+  "desk": "책상",
+  "storage": "수납장",
+  "shelf": "수납장",
+  "wardrobe": "수납장",
+  "kitchen": "주방가구",
+  "bath": "욕실가구",
+  "bathroom": "욕실가구",
+  "other": "기타",
+  "etc": "기타",
+};
+
+/**
+ * Normalize a raw catalog category string to a canonical {@link FurnitureCategory}.
+ * Handles English aliases (sofa, chair, …), loose Korean (의자, tv) and case.
+ * Returns `"기타"` as a safe fallback so previously-unrecognised items still place.
+ */
+export function normalizeFurnitureCategory(raw: string): FurnitureCategory {
+  const key = raw.trim().toLowerCase();
+  return CATEGORY_ALIASES[key] ?? CATEGORY_ALIASES[raw.trim()] ?? "기타";
+}

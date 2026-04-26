@@ -4,8 +4,7 @@ import { router, protectedProcedure } from "../trpc/trpc.js";
 import type { Json } from "../types/database.js";
 import {
   autoPlace,
-  FURNITURE_CATEGORIES,
-  type FurnitureCategory,
+  normalizeFurnitureCategory,
   type Vec2,
   type ExistingItem,
 } from "../lib/auto-placement/index.js";
@@ -42,10 +41,6 @@ function projectPolygon(p: {
     { x_mm: w, y_mm: d },
     { x_mm: 0, y_mm: d },
   ];
-}
-
-function isFurnitureCategory(c: string): c is FurnitureCategory {
-  return (FURNITURE_CATEGORIES as readonly string[]).includes(c);
 }
 
 const PlacementInput = z.object({
@@ -376,12 +371,7 @@ export const homefixStagingRouter = router({
       if (candidateRes.error || !candidateRes.data) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Furniture item not found" });
       }
-      if (!isFurnitureCategory(candidateRes.data.category)) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: `Unsupported category: ${candidateRes.data.category}`,
-        });
-      }
+      const candidateCategory = normalizeFurnitureCategory(candidateRes.data.category);
 
       const polygon = projectPolygon(projectRes.data);
 
@@ -403,14 +393,14 @@ export const homefixStagingRouter = router({
         const byId = new Map((catalogRows ?? []).map((r) => [r.id, r] as const));
         for (const row of placedRows) {
           const f = byId.get(row.furniture_id);
-          if (!f || !isFurnitureCategory(f.category)) continue;
+          if (!f) continue;
           existing.push({
             x_mm: row.x_mm,
             y_mm: row.y_mm,
             rotation_deg: Number(row.rotation_deg),
             width_mm: f.width_mm,
             depth_mm: f.depth_mm,
-            category: f.category,
+            category: normalizeFurnitureCategory(f.category),
           });
         }
       }
@@ -419,7 +409,7 @@ export const homefixStagingRouter = router({
         width_mm: candidateRes.data.width_mm,
         depth_mm: candidateRes.data.depth_mm,
         height_mm: candidateRes.data.height_mm,
-        category: candidateRes.data.category,
+        category: candidateCategory,
       };
 
       console.info(

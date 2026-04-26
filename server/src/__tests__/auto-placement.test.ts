@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { autoPlace } from "../lib/auto-placement/index.js";
+import { autoPlace, normalizeFurnitureCategory } from "../lib/auto-placement/index.js";
 import {
   obbInsidePolygon,
   obbOverlap,
@@ -389,5 +389,53 @@ describe("DPR-118 regression — empty room, non-centred best pose", () => {
     expect(
       notNearCentroid(result.best!.x_mm, result.best!.y_mm, 4000, 4000),
     ).toBe(true);
+  });
+});
+
+// ─── Regression: DPR-95 — catalog uses English categories (sofa, chair, …) ────
+//
+// `furniture_catalog` rows are seeded with English category strings. autoPlace
+// rejected those with `BAD_REQUEST` because the category allow-list is Korean.
+// `normalizeFurnitureCategory` maps both English and loose-Korean labels to the
+// canonical FurnitureCategory so autoPlace works for every active catalog row.
+describe("normalizeFurnitureCategory (DPR-95)", () => {
+  it("maps English seeded categories → canonical Korean", () => {
+    expect(normalizeFurnitureCategory("sofa")).toBe("소파");
+    expect(normalizeFurnitureCategory("bed")).toBe("침대");
+    expect(normalizeFurnitureCategory("chair")).toBe("식탁/의자");
+    expect(normalizeFurnitureCategory("table")).toBe("식탁/의자");
+    expect(normalizeFurnitureCategory("desk")).toBe("책상");
+    expect(normalizeFurnitureCategory("storage")).toBe("수납장");
+  });
+
+  it("passes through canonical Korean unchanged", () => {
+    expect(normalizeFurnitureCategory("소파")).toBe("소파");
+    expect(normalizeFurnitureCategory("식탁/의자")).toBe("식탁/의자");
+    expect(normalizeFurnitureCategory("TV장")).toBe("TV장");
+  });
+
+  it("is case- and whitespace-tolerant", () => {
+    expect(normalizeFurnitureCategory("SOFA")).toBe("소파");
+    expect(normalizeFurnitureCategory("  Chair  ")).toBe("식탁/의자");
+    expect(normalizeFurnitureCategory("tv")).toBe("TV장");
+  });
+
+  it("falls back to 기타 for unknown rather than throwing", () => {
+    expect(normalizeFurnitureCategory("plant")).toBe("기타");
+    expect(normalizeFurnitureCategory("")).toBe("기타");
+  });
+
+  it("autoPlace returns a non-null best for an English-category sofa (regression)", () => {
+    const result = autoPlace({
+      roomPolygon: rectRoom(4500, 5000),
+      existing: [],
+      candidate: {
+        width_mm: 2000,
+        depth_mm: 850,
+        height_mm: 850,
+        category: normalizeFurnitureCategory("sofa"),
+      },
+    });
+    expect(result.best).not.toBeNull();
   });
 });
