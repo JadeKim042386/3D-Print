@@ -71,13 +71,19 @@ export function autoPlace(input: AutoPlaceInput): AutoPlaceOutput {
   if (filtered.length === 0) return emptyResult();
 
   filtered.sort((a, b) => b.score - a.score);
-  const top = dedup(filtered, k);
+  const top = dedup(filtered, k).map(roundPose);
   const best = top[0] ?? null;
   return {
     best,
     alternatives: top.slice(1),
     confidence: best ? best.score : 0,
   };
+}
+
+// Pose generation produces float (x_mm, y_mm); round at the API boundary so
+// downstream consumers (addFurniture schema, DB integer columns) accept them.
+function roundPose<T extends ScoredPose>(p: T): T {
+  return { ...p, x_mm: Math.round(p.x_mm), y_mm: Math.round(p.y_mm) };
 }
 
 function emptyResult(): AutoPlaceOutput {

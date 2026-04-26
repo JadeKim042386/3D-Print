@@ -85,7 +85,7 @@ export default function PlannerRenderPage() {
 
   useEffect(() => {
     if (!accessToken || !projectId) return;
-    trpcQuery("homefix.staging.get", { json: { id: projectId } }, accessToken)
+    trpcQuery("homefix.staging.get", { id: projectId }, accessToken)
       .then((data) => setProject(data))
       .catch(() => setError("프로젝트를 불러오지 못했습니다."))
       .finally(() => setLoading(false));
@@ -98,7 +98,7 @@ export default function PlannerRenderPage() {
     try {
       const result = await trpcMutation(
         "homefix.render.trigger",
-        { json: { project_id: projectId, camera_preset: camera } },
+        { project_id: projectId, camera_preset: camera },
         accessToken,
       );
       // Navigate to job status or model view

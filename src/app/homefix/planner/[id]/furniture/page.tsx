@@ -70,7 +70,7 @@ export default function PlannerFurniturePage() {
 
   useEffect(() => {
     if (!accessToken || !projectId) return;
-    trpcQuery("homefix.staging.get", { json: { id: projectId } }, accessToken)
+    trpcQuery("homefix.staging.get", { id: projectId }, accessToken)
       .then((data) => {
         setDims({
           room_width_mm: data.room_width_mm,

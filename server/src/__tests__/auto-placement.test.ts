@@ -439,3 +439,36 @@ describe("normalizeFurnitureCategory (DPR-95)", () => {
     expect(result.best).not.toBeNull();
   });
 });
+
+// ─── Regression: DPR-95 — autoPlace must return integer x_mm/y_mm ─────────────
+//
+// addFurniture's Zod schema uses `z.number().int()` for x_mm/y_mm. Pose
+// generation produces floats (wall-aligned candidates inset by halfDepth), and
+// passing those through silently fails with HTTP 400 in the browser confirm
+// step. Rounding at the autoPlace boundary keeps the schema invariant.
+describe("autoPlace integer coordinates (DPR-95)", () => {
+  it("returns integer x_mm/y_mm for best and alternatives across diverse candidates", () => {
+    const cases = [
+      { w: 1545, d: 740, cat: "책상" as const },     // IKEA 알렉스 책상 — was x=982.5
+      { w: 1605, d: 2095, cat: "침대" as const },    // 퀸 — was y=3762.5
+      { w: 1985, d: 2095, cat: "침대" as const },    // 킹 — was x=2487.5
+      { w: 2000, d: 850, cat: "소파" as const },
+      { w: 1400, d: 800, cat: "식탁/의자" as const },
+    ];
+    for (const c of cases) {
+      const result = autoPlace({
+        roomPolygon: rectRoom(4500, 5000),
+        existing: [],
+        candidate: { width_mm: c.w, depth_mm: c.d, height_mm: 700, category: c.cat },
+        k: 3,
+      });
+      expect(result.best, `no best for ${c.cat} ${c.w}x${c.d}`).not.toBeNull();
+      expect(Number.isInteger(result.best!.x_mm), `best.x_mm not int for ${c.cat}`).toBe(true);
+      expect(Number.isInteger(result.best!.y_mm), `best.y_mm not int for ${c.cat}`).toBe(true);
+      for (const alt of result.alternatives) {
+        expect(Number.isInteger(alt.x_mm), `alt.x_mm not int for ${c.cat}`).toBe(true);
+        expect(Number.isInteger(alt.y_mm), `alt.y_mm not int for ${c.cat}`).toBe(true);
+      }
+    }
+  });
+});

@@ -98,8 +98,11 @@ function AddFurnitureFlow({
       if (result?.id) {
         setPlacements((prev) => [...prev, { id: result.id }]);
       }
-    } catch {}
-    setPreview(null);
+      setPreview(null);
+    } catch {
+      setPreview((p) => p ? { ...p, confirming: false } : null);
+      setError("배치 확정에 실패했습니다. 다시 시도해 주세요.");
+    }
   };
 
   return (
@@ -222,6 +225,25 @@ describe("addFurniture flow (DPR-120 regression)", () => {
     await act(async () => { fireEvent.click(screen.getByTestId("add-btn")); });
     await waitFor(() => screen.getByTestId("error-banner"));
     expect(screen.getByTestId("error-banner")).toHaveTextContent("자동 배치를 불러오는데 실패했습니다");
+  });
+
+  it("surfaces a Korean error banner when addFurniture mutation fails (DPR-95 regression)", async () => {
+    const mockFetch = jest.fn()
+      .mockResolvedValueOnce(
+        tRPCOkResponse({ best: { x_mm: 500, y_mm: 500, rotation_deg: 0 }, alternatives: [], confidence: 0.8 }),
+      )
+      .mockResolvedValueOnce(tRPCErrorResponse(400));
+    global.fetch = mockFetch as unknown as typeof fetch;
+
+    render(<AddFurnitureFlow projectId={PROJECT_ID} token={TOKEN} />);
+    await act(async () => { fireEvent.click(screen.getByTestId("add-btn")); });
+    await waitFor(() => screen.getByTestId("confirm-btn"));
+    await act(async () => { fireEvent.click(screen.getByTestId("confirm-btn")); });
+
+    await waitFor(() => screen.getByTestId("error-banner"));
+    expect(screen.getByTestId("error-banner")).toHaveTextContent("배치 확정에 실패했습니다");
+    // Preview stays open so the user can retry; previously the catch was silent.
+    expect(screen.getByTestId("preview-panel")).toBeInTheDocument();
   });
 
   it("shows no-space error when autoPlace returns best: null", async () => {

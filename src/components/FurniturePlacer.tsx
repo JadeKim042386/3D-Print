@@ -414,9 +414,17 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
           { id: result.id, furniture_id: item.id, x_mm, y_mm, rotation_deg, furniture: item },
         ]);
       }
-    } catch {}
-
-    setAutoPlacePreview(null);
+      setAutoPlacePreview(null);
+    } catch (err) {
+      console.error(
+        "[addFurniture] 배치 확정 실패 — project_id:", projectId,
+        "furniture_id:", item.id,
+        "x_mm:", x_mm, "y_mm:", y_mm, "rotation_deg:", rotation_deg,
+        "error:", err,
+      );
+      setAutoPlacePreview((prev) => prev ? { ...prev, confirming: false } : null);
+      setAutoPlaceError("배치 확정에 실패했습니다. 다시 시도해 주세요.");
+    }
   };
 
   // ── Rotate selected item 90° CW ───────────────────────────────────────────
