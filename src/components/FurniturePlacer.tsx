@@ -419,8 +419,11 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
     if (!dragRef.current) return;
     const { placementId, curXmm, curYmm, hasMoved } = dragRef.current;
     dragRef.current = null;
-    // Suppress the click event that browsers fire after a pointer-up from a drag
-    if (hasMoved) suppressNextClick.current = true;
+    // Pointer capture is on the SVG, so the synthesized click after pointer-up
+    // also fires on the SVG (not the inner <g>). Without this flag the SVG
+    // onClick would call setSelectedId(null) and immediately deselect the
+    // item we just picked, hiding the rotate/delete bar.
+    suppressNextClick.current = true;
     // Only persist to backend if the item actually moved
     if (!hasMoved) return;
     await trpcMutation(
