@@ -38,13 +38,17 @@ const { data: sess } = await anon.auth.verifyOtp({
 const session = sess.session;
 console.log(`[mint] access_token len=${session.access_token.length} expires_at=${session.expires_at}`);
 
-// 2. launch chrome
+// 2. launch chrome — use a tall viewport so the placement canvas (~1100px below
+// the catalog) is reachable by mouse.click without scrolling. Default puppeteer
+// 800x600 leaves the placed <g> below the fold, so click events never hit it.
 const browser = await puppeteer.launch({
   headless: "new",
   executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-  args: ["--no-sandbox", "--disable-dev-shm-usage"],
+  defaultViewport: { width: 1280, height: 1800 },
+  args: ["--no-sandbox", "--disable-dev-shm-usage", "--window-size=1280,1800"],
 });
 const page = await browser.newPage();
+await page.setViewport({ width: 1280, height: 1800 });
 
 const networkErrors = [];
 page.on("response", (r) => {
@@ -185,7 +189,14 @@ if (!found) {
 
 // Step 5. Click the newly placed <g> using its exact bounding rect centre.
 // Each placed furniture <g> carries data-placement-id so we can find it
-// without relying on fragile text or order heuristics.
+// without relying on fragile text or order heuristics. Scroll into view first
+// so the click coordinates fall inside the actual viewport.
+await page.evaluate((placementId) => {
+  document.querySelector(`[data-placement-id="${placementId}"]`)
+    ?.scrollIntoView({ block: "center" });
+}, found.id);
+await new Promise((r) => setTimeout(r, 300));
+
 const placementRect = await page.evaluate((placementId) => {
   const g = document.querySelector(`[data-placement-id="${placementId}"]`);
   if (!g) return null;
