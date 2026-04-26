@@ -1,4 +1,4 @@
-app = "dpr-3d-api"
+app = "homefix-api-prod"
 primary_region = "nrt"
 
 [build]

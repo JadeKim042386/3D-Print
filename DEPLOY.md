@@ -4,8 +4,8 @@
 
 | Component | Platform | Region |
 |-----------|----------|--------|
-| API Server | Fly.io (`dpr-3d-api`) | nrt (Tokyo, nearest to Seoul) |
-| Worker | Fly.io (`dpr-3d-worker`) | nrt |
+| API Server | Fly.io (`homefix-api-prod`) | nrt (Tokyo, nearest to Seoul) |
+| Worker | Fly.io (`homefix-worker-prod`) | nrt |
 | Frontend | Vercel | icn1 (Seoul edge) |
 | Database | Supabase | ap-northeast-2 (Seoul) |
 | Redis | Upstash Redis | ap-northeast-1 |
@@ -24,8 +24,8 @@
 cd server
 
 # API server
-fly apps create dpr-3d-api
-fly secrets set -a dpr-3d-api \
+fly apps create homefix-api-prod
+fly secrets set -a homefix-api-prod \
   SUPABASE_URL="..." \
   SUPABASE_SERVICE_KEY="..." \
   SUPABASE_ANON_KEY="..." \
@@ -36,8 +36,8 @@ fly secrets set -a dpr-3d-api \
   TOSS_PAYMENTS_WEBHOOK_SECRET="..."
 
 # Worker
-fly apps create dpr-3d-worker
-fly secrets set -a dpr-3d-worker \
+fly apps create homefix-worker-prod
+fly secrets set -a homefix-worker-prod \
   SUPABASE_URL="..." \
   SUPABASE_SERVICE_KEY="..." \
   SUPABASE_ANON_KEY="..." \
@@ -88,7 +88,7 @@ GitHub Actions deploys automatically on push to `main` when CI passes.
 ## Health Check
 
 ```bash
-curl https://dpr-3d-api.fly.dev/health
+curl https://homefix-api-prod.fly.dev/health
 # {"status":"ok","services":{"redis":"ok"}}
 ```
 

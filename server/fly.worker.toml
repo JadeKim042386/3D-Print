@@ -1,4 +1,4 @@
-app = "dpr-3d-worker"
+app = "homefix-worker-prod"
 primary_region = "nrt"
 
 [build]
