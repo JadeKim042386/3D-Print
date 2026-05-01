@@ -175,15 +175,11 @@ async function main() {
   server.get("/health", async () => {
     const services: Record<string, string> = {};
 
-    if (redisConnected) {
-      try {
-        await redis.ping();
-        services.redis = "ok";
-      } catch {
-        services.redis = "error";
-      }
-    } else {
-      services.redis = "not_connected";
+    try {
+      await redis.ping();
+      services.redis = "ok";
+    } catch {
+      services.redis = "error";
     }
 
     const allOk = Object.values(services).every((s) => s === "ok");
