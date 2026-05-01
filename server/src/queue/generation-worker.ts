@@ -62,11 +62,13 @@ function buildRenderPrompt(snapshot: HomefixRenderJobData["snapshot"], cameraPre
   );
 }
 
+const RENDERS_BUCKET = "renders";
+
 async function handleHomefixRender(
   deps: GenerationWorkerDeps,
   job: Job<HomefixRenderJobData>
 ): Promise<void> {
-  const { supabase, provider, bucket } = deps;
+  const { supabase, provider } = deps;
   const { homefixRenderJobId, projectId, cameraPreset, snapshot } = job.data;
 
   await supabase.from("homefix_render_jobs").update({
@@ -94,8 +96,8 @@ async function handleHomefixRender(
   if (!imageUrl) throw new Error("Provider returned no render URL");
 
   const ext = result.thumbnailUrl ? "jpg" : result.format;
-  const storagePath = `renders/${homefixRenderJobId}/${providerTaskId}.${ext}`;
-  const resultUrl = await uploadToStorage(supabase, bucket, storagePath, imageUrl);
+  const storagePath = `${homefixRenderJobId}/${providerTaskId}.${ext}`;
+  const resultUrl = await uploadToStorage(supabase, RENDERS_BUCKET, storagePath, imageUrl);
   await job.updateProgress(95);
 
   await supabase.from("homefix_render_jobs").update({
