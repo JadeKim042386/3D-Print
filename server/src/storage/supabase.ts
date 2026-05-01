@@ -16,6 +16,10 @@ const CONTENT_TYPE_MAP: Record<string, string> = {
   stl: "model/stl",
   obj: "text/plain",
   fbx: "application/octet-stream",
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  webp: "image/webp",
 };
 
 /**
