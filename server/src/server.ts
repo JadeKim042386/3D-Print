@@ -737,6 +737,221 @@ async function main() {
   });
   // ────────────────────────────────────────────────────────────────────────────
 
+  // ── Gallery & Public Model routes ─────────────────────────────────────────
+
+  server.get<{ Querystring: { page?: string; pageSize?: string } }>("/gallery", async (request, reply) => {
+    const page = Math.max(1, parseInt(request.query.page ?? "1", 10) || 1);
+    const pageSize = Math.min(50, Math.max(1, parseInt(request.query.pageSize ?? "12", 10) || 12));
+    const offset = (page - 1) * pageSize;
+
+    const { data, count } = await db
+      .from("models")
+      .select("id, prompt, file_url, thumbnail_url, created_at", { count: "exact" })
+      .eq("is_public", true)
+      .eq("status", "ready")
+      .order("created_at", { ascending: false })
+      .range(offset, offset + pageSize - 1);
+
+    return {
+      models: (data ?? []).map((m) => ({
+        id: m.id,
+        prompt: m.prompt,
+        stlUrl: m.file_url,
+        isPublic: true,
+        createdAt: m.created_at,
+      })),
+      total: count ?? 0,
+      page,
+      pageSize,
+    };
+  });
+
+  server.get<{ Params: { id: string } }>("/models/:id/public", async (request, reply) => {
+    const { data } = await db
+      .from("models")
+      .select("id, prompt, file_url, created_at")
+      .eq("id", request.params.id)
+      .eq("is_public", true)
+      .single();
+
+    if (!data) return reply.code(404).send({ error: "Not found" });
+
+    return { id: data.id, prompt: data.prompt, stlUrl: data.file_url, isPublic: true, createdAt: data.created_at };
+  });
+
+  server.patch<{ Params: { id: string }; Body: { isPublic: boolean } }>("/models/:id/visibility", async (request, reply) => {
+    const user = getUser(request.headers.authorization);
+    if (!user) return reply.code(401).send({ error: "Unauthorized" });
+
+    const { data: owned } = await db.from("models").select("id").eq("id", request.params.id).eq("user_id", user.id).single();
+    if (!owned) return reply.code(404).send({ error: "Model not found" });
+
+    const { data: updated, error } = await db
+      .from("models")
+      .update({ is_public: request.body.isPublic })
+      .eq("id", request.params.id)
+      .select("id, status, prompt, file_url, source_image_url, created_at, is_public, triangle_count, printability_score, mesh_volume_mm3, mesh_surface_area_mm2")
+      .single();
+
+    if (error || !updated) return reply.code(500).send({ error: error?.message });
+
+    return {
+      id: updated.id,
+      status: updated.status,
+      prompt: updated.prompt,
+      stlUrl: updated.file_url,
+      sourceImageUrl: updated.source_image_url ?? null,
+      isPublic: updated.is_public,
+      createdAt: updated.created_at,
+      meshQuality: updated.triangle_count != null ? {
+        triangleCount: updated.triangle_count,
+        printabilityScore: updated.printability_score,
+        volume_mm3: updated.mesh_volume_mm3,
+        surfaceArea_mm2: updated.mesh_surface_area_mm2,
+      } : null,
+    };
+  });
+
+  // ── Credits & Subscription routes ─────────────────────────────────────────
+
+  server.get("/credits/balance", async (request, reply) => {
+    const user = getUser(request.headers.authorization);
+    if (!user) return reply.code(401).send({ error: "Unauthorized" });
+
+    const { data } = await db
+      .from("user_credits")
+      .select("credits_used, credits_limit, plan_id, period_end")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!data) {
+      return { used: 0, total: 10, remaining: 10, plan: "free", resetAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() };
+    }
+
+    return {
+      used: data.credits_used,
+      total: data.credits_limit,
+      remaining: Math.max(0, data.credits_limit - data.credits_used),
+      plan: data.plan_id,
+      resetAt: data.period_end,
+    };
+  });
+
+  server.get("/subscription", async (request, reply) => {
+    const user = getUser(request.headers.authorization);
+    if (!user) return reply.code(401).send({ error: "Unauthorized" });
+
+    const { data } = await db
+      .from("user_credits")
+      .select("plan_id, period_start, period_end")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!data || data.plan_id === "free") return reply.code(404).send({ error: "No active subscription" });
+
+    const status = new Date(data.period_end) > new Date() ? "active" : "expired";
+
+    return {
+      plan: data.plan_id,
+      status,
+      currentPeriodStart: data.period_start,
+      currentPeriodEnd: data.period_end,
+      cancelAtPeriodEnd: false,
+      tossCustomerId: null,
+    };
+  });
+
+  server.post<{ Body: { plan: string } }>("/subscription/checkout", async (request, reply) => {
+    const user = getUser(request.headers.authorization);
+    if (!user) return reply.code(401).send({ error: "Unauthorized" });
+    if (!paymentProvider) return reply.code(503).send({ error: "Payment provider not configured" });
+
+    const { plan } = request.body ?? {};
+    if (!plan || plan === "free") return reply.code(400).send({ error: "Invalid plan" });
+
+    const { data: planData } = await db.from("subscription_plans").select("id, name, price_krw").eq("id", plan).single();
+    if (!planData) return reply.code(404).send({ error: "Plan not found" });
+
+    const result = await paymentProvider.createOrder({
+      modelId: `sub-${user.id}-${plan}`,
+      amount: planData.price_krw,
+      orderName: `구독 업그레이드 - ${planData.name}`,
+      customerName: user.email.split("@")[0]!,
+      customerEmail: user.email,
+    });
+
+    return { checkoutUrl: result.checkoutData["checkoutUrl"] ?? "", orderId: result.orderId };
+  });
+
+  server.post("/subscription/cancel", async (request, reply) => {
+    const user = getUser(request.headers.authorization);
+    if (!user) return reply.code(401).send({ error: "Unauthorized" });
+
+    const { error } = await db
+      .from("user_credits")
+      .update({ plan_id: "free", period_end: new Date().toISOString() })
+      .eq("user_id", user.id);
+
+    if (error) return reply.code(500).send({ error: error.message });
+
+    return reply.code(204).send();
+  });
+
+  server.post<{ Body: { credits: number } }>("/credits/topup", async (request, reply) => {
+    const user = getUser(request.headers.authorization);
+    if (!user) return reply.code(401).send({ error: "Unauthorized" });
+    if (!paymentProvider) return reply.code(503).send({ error: "Payment provider not configured" });
+
+    const { credits } = request.body ?? {};
+    if (!credits || credits <= 0) return reply.code(400).send({ error: "Invalid credits amount" });
+
+    const pricePerCredit = 1000;
+    const result = await paymentProvider.createOrder({
+      modelId: `topup-${user.id}-${Date.now()}`,
+      amount: credits * pricePerCredit,
+      orderName: `크레딧 충전 ${credits}개`,
+      customerName: user.email.split("@")[0]!,
+      customerEmail: user.email,
+    });
+
+    return { checkoutUrl: result.checkoutData["checkoutUrl"] ?? "", orderId: result.orderId };
+  });
+
+  // GET /generations — paginated generation history (backed by models table)
+  server.get<{ Querystring: { page?: string; pageSize?: string } }>("/generations", async (request, reply) => {
+    const user = getUser(request.headers.authorization);
+    if (!user) return reply.code(401).send({ error: "Unauthorized" });
+
+    const page = Math.max(1, parseInt(request.query.page ?? "1", 10) || 1);
+    const pageSize = Math.min(100, Math.max(1, parseInt(request.query.pageSize ?? "20", 10) || 20));
+    const offset = (page - 1) * pageSize;
+
+    const { data, count } = await db
+      .from("models")
+      .select("id, prompt, source_image_url, status, created_at", { count: "exact" })
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .range(offset, offset + pageSize - 1);
+
+    const statusMap: Record<string, "pending" | "processing" | "ready" | "error"> = {
+      queued: "pending", processing: "processing", ready: "ready", failed: "error",
+    };
+
+    return {
+      generations: (data ?? []).map((m) => ({
+        id: m.id,
+        prompt: m.prompt,
+        sourceImageUrl: m.source_image_url ?? null,
+        status: statusMap[m.status] ?? "processing",
+        creditsUsed: 1,
+        createdAt: m.created_at,
+      })),
+      total: count ?? 0,
+      page,
+      pageSize,
+    };
+  });
+
   // ── Analytics event ingestion (best-effort, no auth required) ─────────────
   server.post("/analytics/event", async (request, reply) => {
     const { event, properties } = request.body as {

@@ -176,6 +176,8 @@ export type Database = {
           // Print-readiness fields (migration 010)
           print_quality_score: number | null
           print_ready: boolean | null
+          // Visibility (migration 012)
+          is_public: boolean
         }
         Insert: {
           created_at?: string
@@ -208,6 +210,7 @@ export type Database = {
           mesh_surface_area_mm2?: number | null
           print_quality_score?: number | null
           print_ready?: boolean | null
+          is_public?: boolean
         }
         Update: {
           created_at?: string
@@ -240,6 +243,7 @@ export type Database = {
           mesh_surface_area_mm2?: number | null
           print_quality_score?: number | null
           print_ready?: boolean | null
+          is_public?: boolean
         }
         Relationships: [
           {
