@@ -108,7 +108,7 @@ async function handleHomefixRender(
     completed_at: new Date().toISOString(),
   }).eq("id", homefixRenderJobId);
 
-  await supabase.from("homefix_staging_projects").update({ status: "ready" }).eq("id", projectId);
+  await supabase.from("homefix_staging_projects").update({ status: "rendered" }).eq("id", projectId);
 
   await job.updateProgress(100);
 }
@@ -234,7 +234,7 @@ export function createGenerationWorker(
         error_message: error.message,
         completed_at: new Date().toISOString(),
       }).eq("id", homefixRenderJobId);
-      await supabase.from("homefix_staging_projects").update({ status: "ready" }).eq("id", projectId);
+      await supabase.from("homefix_staging_projects").update({ status: "rendered" }).eq("id", projectId);
     } else {
       await supabase.from("models").update({
         status:        "failed",

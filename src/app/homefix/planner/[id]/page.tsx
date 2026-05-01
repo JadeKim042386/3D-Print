@@ -101,11 +101,11 @@ export default function PlannerRenderPage() {
         { project_id: projectId, camera_preset: camera },
         accessToken,
       );
-      // Navigate to job status or model view
-      if (result?.model_id) {
+      // Navigate to render status page
+      if (result?.jobId) {
+        router.push(`/homefix/render/${result.jobId}`);
+      } else if (result?.model_id) {
         router.push(`/models/${result.model_id}`);
-      } else if (result?.job_id) {
-        router.push(`/models/${result.job_id}`);
       } else {
         router.push("/homefix");
       }
