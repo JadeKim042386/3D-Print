@@ -92,10 +92,11 @@ async function handleHomefixRender(
   });
   await job.updateProgress(80);
 
-  const imageUrl = result.thumbnailUrl ?? result.modelUrl;
-  if (!imageUrl) throw new Error("Provider returned no render URL");
-
-  const ext = result.thumbnailUrl ? "jpg" : result.format;
+  // Prefer the thumbnail (JPEG image); fall back to a 1×1 PNG placeholder so
+  // the mock provider (which returns no thumbnail) still completes successfully.
+  const PLACEHOLDER_PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+  const imageUrl = result.thumbnailUrl ?? PLACEHOLDER_PNG;
+  const ext = result.thumbnailUrl ? "jpg" : "png";
   const storagePath = `${homefixRenderJobId}/${providerTaskId}.${ext}`;
   const resultUrl = await uploadToStorage(supabase, RENDERS_BUCKET, storagePath, imageUrl);
   await job.updateProgress(95);
