@@ -5,6 +5,7 @@ primary_region = "nrt"
 
 [env]
   NODE_ENV = "production"
+  REDIS_URL = "redis://default:c49e2b194e0249238116fcab6fe279b9@fly-dpr-3d-redis.upstash.io:6379"
 
 [processes]
   worker = "node dist/worker.js"
