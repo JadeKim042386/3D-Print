@@ -7,7 +7,7 @@
  * For dimension-based generation use the separate dimension-worker service.
  */
 
-import { Worker, type ConnectionOptions } from "bullmq";
+import { Worker, type Job, type ConnectionOptions } from "bullmq";
 import * as Sentry from "@sentry/node";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { GenerationProvider } from "../types/generation.js";
@@ -20,6 +20,94 @@ import {
 import type { Queue } from "bullmq";
 import type { PrintReadinessJobData, PrintReadinessJobResult } from "./print-readiness-queue.js";
 import type { Mailer } from "../lib/mailer.js";
+
+interface HomefixRenderJobData {
+  homefixRenderJobId: string;
+  projectId: string;
+  userId: string;
+  cameraPreset: string;
+  snapshot: {
+    room_type: string;
+    room_width_mm: number;
+    room_depth_mm: number;
+    room_height_mm: number;
+    placements: Array<{
+      furniture_catalog?: { name_en?: string };
+    }>;
+  };
+}
+
+function buildRenderPrompt(snapshot: HomefixRenderJobData["snapshot"], cameraPreset: string): string {
+  const { room_type, room_width_mm, room_depth_mm, room_height_mm, placements } = snapshot;
+  const w = (room_width_mm / 1000).toFixed(1);
+  const d = (room_depth_mm / 1000).toFixed(1);
+  const h = (room_height_mm / 1000).toFixed(1);
+  const furniture = placements
+    .map((p) => p.furniture_catalog?.name_en ?? "furniture piece")
+    .join(", ") || "empty room";
+  const cameraDesc: Record<string, string> = {
+    top: "top-down floor plan view",
+    perspective: "perspective view",
+    corner_ne: "corner view from northeast",
+    corner_nw: "corner view from northwest",
+    corner_se: "corner view from southeast",
+    corner_sw: "corner view from southwest",
+  };
+  return (
+    `Photorealistic interior render of a ${room_type} room, ` +
+    `${w}m wide × ${d}m deep × ${h}m tall. ` +
+    `Furniture: ${furniture}. ` +
+    `Camera: ${cameraDesc[cameraPreset] ?? "perspective view"}. ` +
+    `Architectural visualization, professional lighting, high detail.`
+  );
+}
+
+async function handleHomefixRender(
+  deps: GenerationWorkerDeps,
+  job: Job<HomefixRenderJobData>
+): Promise<void> {
+  const { supabase, provider, bucket } = deps;
+  const { homefixRenderJobId, projectId, cameraPreset, snapshot } = job.data;
+
+  await supabase.from("homefix_render_jobs").update({
+    status: "processing",
+    started_at: new Date().toISOString(),
+  }).eq("id", homefixRenderJobId);
+  await job.updateProgress(10);
+
+  const prompt = buildRenderPrompt(snapshot, cameraPreset);
+  const { providerTaskId } = await provider.createTask({ prompt });
+
+  await supabase.from("homefix_render_jobs").update({
+    provider_task_id: providerTaskId,
+    provider: provider.name,
+  }).eq("id", homefixRenderJobId);
+  await job.updateProgress(20);
+
+  const result = await provider.waitForCompletion(providerTaskId, {
+    pollIntervalMs: 5000,
+    timeoutMs: 600_000,
+  });
+  await job.updateProgress(80);
+
+  const imageUrl = result.thumbnailUrl ?? result.modelUrl;
+  if (!imageUrl) throw new Error("Provider returned no render URL");
+
+  const ext = result.thumbnailUrl ? "jpg" : result.format;
+  const storagePath = `renders/${homefixRenderJobId}/${providerTaskId}.${ext}`;
+  const resultUrl = await uploadToStorage(supabase, bucket, storagePath, imageUrl);
+  await job.updateProgress(95);
+
+  await supabase.from("homefix_render_jobs").update({
+    status: "completed",
+    result_url: resultUrl,
+    completed_at: new Date().toISOString(),
+  }).eq("id", homefixRenderJobId);
+
+  await supabase.from("homefix_staging_projects").update({ status: "ready" }).eq("id", projectId);
+
+  await job.updateProgress(100);
+}
 
 export interface GenerationWorkerDeps {
   connection: ConnectionOptions;
@@ -40,6 +128,11 @@ export function createGenerationWorker(
   const worker = new Worker<GenerationJobData, GenerationJobResult>(
     GENERATION_QUEUE_NAME,
     async (job) => {
+      if (job.name === "homefix-render") {
+        await handleHomefixRender(deps, job as unknown as Job<HomefixRenderJobData>);
+        return { modelId: "", storageUrl: "", providerTaskId: "" };
+      }
+
       const { modelId, prompt } = job.data;
 
       // Mark as generating
@@ -124,11 +217,21 @@ export function createGenerationWorker(
 
   worker.on("failed", async (job, error) => {
     Sentry.captureException(error, {
-      tags: { queue: GENERATION_QUEUE_NAME, jobId: job?.id, modelId: job?.data.modelId },
-      extra: { prompt: job?.data.prompt, attemptsMade: job?.attemptsMade },
+      tags: { queue: GENERATION_QUEUE_NAME, jobId: job?.id, jobName: job?.name },
+      extra: { attemptsMade: job?.attemptsMade },
     });
 
-    if (job) {
+    if (!job) return;
+
+    if (job.name === "homefix-render") {
+      const { homefixRenderJobId, projectId } = job.data as unknown as HomefixRenderJobData;
+      await supabase.from("homefix_render_jobs").update({
+        status: "failed",
+        error_message: error.message,
+        completed_at: new Date().toISOString(),
+      }).eq("id", homefixRenderJobId);
+      await supabase.from("homefix_staging_projects").update({ status: "ready" }).eq("id", projectId);
+    } else {
       await supabase.from("models").update({
         status:        "failed",
         error_message: error.message,
