@@ -104,6 +104,7 @@ async function handleHomefixRender(
   await supabase.from("homefix_render_jobs").update({
     status: "completed",
     result_url: resultUrl,
+    error_message: null,
     completed_at: new Date().toISOString(),
   }).eq("id", homefixRenderJobId);
 
