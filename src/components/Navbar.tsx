@@ -40,15 +40,15 @@ export default function Navbar() {
 
   return (
     <nav className="border-b border-gray-200 bg-white">
-      <div className="mx-auto max-w-5xl flex items-center justify-between px-4 py-3">
-        <Link href="/" className="text-lg sm:text-xl font-bold text-gray-900 truncate mr-2">
+      <div className="mx-auto max-w-5xl flex items-center justify-between px-4 py-3 gap-2">
+        <Link href="/" className="text-lg sm:text-xl font-bold text-gray-900 truncate">
           {t("app.title")}
         </Link>
 
-        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-1 sm:gap-3 min-w-0">
           <Link
             href="/gallery"
-            className="text-sm text-gray-600 hover:text-gray-900 min-h-[44px] flex items-center px-2"
+            className="hidden sm:flex text-sm text-gray-600 hover:text-gray-900 min-h-[44px] items-center px-2"
           >
             {t("nav.gallery")}
           </Link>
@@ -62,14 +62,14 @@ export default function Navbar() {
 
           <Link
             href="/pricing"
-            className="text-sm text-gray-600 hover:text-gray-900 min-h-[44px] flex items-center px-2"
+            className="hidden sm:flex text-sm text-gray-600 hover:text-gray-900 min-h-[44px] items-center px-2"
           >
             {t("nav.pricing")}
           </Link>
 
           <button
             onClick={toggleLocale}
-            className="text-sm text-gray-600 hover:text-gray-900 px-2 sm:px-3 py-2 rounded border border-gray-300 min-h-[44px] min-w-[44px] flex items-center justify-center"
+            className="hidden sm:flex text-sm text-gray-600 hover:text-gray-900 px-2 sm:px-3 py-2 rounded border border-gray-300 min-h-[44px] min-w-[44px] items-center justify-center"
           >
             {i18n.language === "ko" ? "EN" : "한국어"}
           </button>
@@ -80,13 +80,13 @@ export default function Navbar() {
 
               <Link
                 href="/dashboard"
-                className="text-sm text-gray-600 hover:text-gray-900 min-h-[44px] flex items-center px-2"
+                className="hidden sm:flex text-sm text-gray-600 hover:text-gray-900 min-h-[44px] items-center px-2"
               >
                 {t("nav.dashboard")}
               </Link>
               <Link
                 href="/admin"
-                className="text-sm text-gray-600 hover:text-gray-900 min-h-[44px] flex items-center px-2"
+                className="hidden md:flex text-sm text-gray-600 hover:text-gray-900 min-h-[44px] items-center px-2"
               >
                 {t("admin.dashboard")}
               </Link>
@@ -100,7 +100,7 @@ export default function Navbar() {
           ) : (
             <Link
               href="/auth"
-              className="text-sm bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 min-h-[44px] flex items-center"
+              className="text-sm bg-gray-900 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-gray-800 min-h-[44px] flex items-center whitespace-nowrap"
             >
               {t("auth.login")}
             </Link>
