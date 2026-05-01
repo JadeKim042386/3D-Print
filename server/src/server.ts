@@ -100,19 +100,17 @@ async function main() {
     console.error("[redis] Connection error:", err.message);
   });
 
-  // Try connecting to Redis; if it fails the server still starts
-  let redisConnected = false;
+  // Try connecting to Redis; queues are always created so they reconnect automatically
   try {
     await redis.connect();
-    redisConnected = true;
     console.log("[redis] Connected");
   } catch (err) {
-    console.warn("[redis] Initial connection failed — generation queue unavailable:", (err as Error).message);
+    console.warn("[redis] Initial connection failed — will retry automatically:", (err as Error).message);
   }
 
-  const generationQueue  = redisConnected ? createGenerationQueue(redis)  : null;
-  const dimensionQueue   = redisConnected ? createDimensionQueue(redis)   : null;
-  const exportQueue      = redisConnected ? createExportQueue(redis)      : null;
+  const generationQueue  = createGenerationQueue(redis);
+  const dimensionQueue   = createDimensionQueue(redis);
+  const exportQueue      = createExportQueue(redis);
   const paymentProvider  = createPaymentProvider(config);
   const printProviders   = createPrintProviders(config);
   const mailer           = createMailer(config);

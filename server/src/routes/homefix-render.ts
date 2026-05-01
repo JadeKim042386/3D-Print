@@ -113,17 +113,20 @@ export const homefixRenderRouter = router({
         .update({ status: "rendering" })
         .eq("id", input.project_id);
 
-      // 5 — enqueue in BullMQ (falls back gracefully if queue unavailable)
-      console.log(`[homefix-render] generationQueue available: ${!!ctx.generationQueue}, job DB id: ${job.id}`);
+      // 5 — enqueue in BullMQ (falls back to DB-only if queue unavailable)
       if (ctx.generationQueue) {
-        const bullJob = await ctx.generationQueue.add("homefix-render", {
-          homefixRenderJobId: job.id,
-          projectId:          input.project_id,
-          userId:             ctx.user.id,
-          cameraPreset:       input.camera_preset,
-          snapshot,
-        } as any);
-        console.log(`[homefix-render] enqueued BullMQ job id: ${bullJob.id}`);
+        try {
+          const bullJob = await ctx.generationQueue.add("homefix-render", {
+            homefixRenderJobId: job.id,
+            projectId:          input.project_id,
+            userId:             ctx.user.id,
+            cameraPreset:       input.camera_preset,
+            snapshot,
+          } as any);
+          console.log(`[homefix-render] enqueued BullMQ job id: ${bullJob.id}`);
+        } catch (enqueueErr) {
+          console.error(`[homefix-render] BullMQ enqueue failed — job ${job.id} queued in DB only:`, (enqueueErr as Error).message);
+        }
       } else {
         console.warn("[homefix-render] generationQueue unavailable — job queued in DB only");
       }
