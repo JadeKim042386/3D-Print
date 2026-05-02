@@ -168,8 +168,13 @@ export default function HomefixSetupPage() {
       }
       const data = await res.json();
       const result = data.result?.data?.json ?? data.result?.data ?? data;
-      const modelId = result?.model_id ?? result?.job_id;
-      router.push(modelId ? `/models/${modelId}` : "/homefix");
+      if (result?.jobId) {
+        router.push(`/homefix/render/${result.jobId}`);
+      } else if (result?.model_id) {
+        router.push(`/models/${result.model_id}`);
+      } else {
+        router.push("/homefix");
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "렌더링 요청에 실패했습니다.");
       setRendering(false);
