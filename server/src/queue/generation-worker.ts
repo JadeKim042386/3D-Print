@@ -32,18 +32,23 @@ interface HomefixRenderJobData {
     room_depth_mm: number;
     room_height_mm: number;
     placements: Array<{
-      furniture_catalog?: { name_en?: string };
+      furniture_catalog?: { name_en?: string; name_ko?: string };
     }>;
   };
 }
 
-function buildRenderPrompt(snapshot: HomefixRenderJobData["snapshot"], cameraPreset: string): string {
+export function buildRenderPrompt(snapshot: HomefixRenderJobData["snapshot"], cameraPreset: string): string {
   const { room_type, room_width_mm, room_depth_mm, room_height_mm, placements } = snapshot;
   const w = (room_width_mm / 1000).toFixed(1);
   const d = (room_depth_mm / 1000).toFixed(1);
   const h = (room_height_mm / 1000).toFixed(1);
   const furniture = placements
-    .map((p) => p.furniture_catalog?.name_en ?? "furniture piece")
+    .map((p) => {
+      const ko = p.furniture_catalog?.name_ko;
+      const en = p.furniture_catalog?.name_en;
+      if (ko && en) return `${ko} (${en})`;
+      return ko ?? en ?? "furniture piece";
+    })
     .join(", ") || "empty room";
   const cameraDesc: Record<string, string> = {
     top: "top-down floor plan view",
@@ -64,6 +69,11 @@ function buildRenderPrompt(snapshot: HomefixRenderJobData["snapshot"], cameraPre
 
 const RENDERS_BUCKET = "renders";
 
+const HOMEFIX_NEGATIVE_PROMPT =
+  "(cartoon), (anime), (low poly), (extra furniture), (extra walls), " +
+  "(floating objects), (unrealistic proportions), (distorted), (blurry), " +
+  "(low quality), (watermark), (text), (oversaturated)";
+
 async function handleHomefixRender(
   deps: GenerationWorkerDeps,
   job: Job<HomefixRenderJobData>
@@ -78,7 +88,7 @@ async function handleHomefixRender(
   await job.updateProgress(10);
 
   const prompt = buildRenderPrompt(snapshot, cameraPreset);
-  const { providerTaskId } = await provider.createTask({ prompt });
+  const { providerTaskId } = await provider.createTask({ prompt, negative_prompt: HOMEFIX_NEGATIVE_PROMPT });
 
   await supabase.from("homefix_render_jobs").update({
     provider_task_id: providerTaskId,

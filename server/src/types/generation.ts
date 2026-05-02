@@ -49,6 +49,10 @@ export type GenerationStatus =
 export interface GenerationRequest {
   prompt: string;
   format?: OutputFormat;
+  /** Stable seed for reproducible outputs (provider-specific integer) */
+  seed?: number;
+  /** Comma-separated negative prompt to reduce hallucinations */
+  negative_prompt?: string;
 }
 
 /** Result returned after a generation completes */

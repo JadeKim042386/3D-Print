@@ -38,6 +38,28 @@ describe("MeshyProvider", () => {
         (mockFetch.mock.calls[0]![1] as RequestInit).body as string
       );
       expect(body.prompt).toBe("a red chair");
+      expect(body.negative_prompt).toBeUndefined();
+      expect(body.seed).toBeUndefined();
+    });
+
+    it("should pass negative_prompt and seed when provided", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ result: "task-456" }),
+      });
+
+      const result = await provider.createTask({
+        prompt: "a blue sofa",
+        negative_prompt: "(cartoon), (low poly)",
+        seed: 42,
+      });
+
+      expect(result.providerTaskId).toBe("task-456");
+      const body = JSON.parse(
+        (mockFetch.mock.calls[0]![1] as RequestInit).body as string
+      );
+      expect(body.negative_prompt).toBe("(cartoon), (low poly)");
+      expect(body.seed).toBe(42);
     });
 
     it("should throw on API error", async () => {

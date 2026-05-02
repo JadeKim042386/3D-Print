@@ -55,6 +55,8 @@ export class MeshyProvider implements GenerationProvider, ImageGenerationProvide
         prompt: request.prompt,
         art_style: "realistic",
         should_remesh: true,
+        ...(request.negative_prompt !== undefined && { negative_prompt: request.negative_prompt }),
+        ...(request.seed !== undefined && { seed: request.seed }),
       }),
     });
 
