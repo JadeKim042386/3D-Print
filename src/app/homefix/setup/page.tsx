@@ -31,6 +31,23 @@ const PRESETS: { label: string; dims: RoomDimensions }[] = [
   },
 ];
 
+class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
+function parseTrpcErrorBody(text: string, fallback: string): string {
+  try {
+    const parsed = JSON.parse(text);
+    return parsed?.error?.message || parsed?.message || fallback;
+  } catch {
+    return text || fallback;
+  }
+}
+
 async function createStagingProject(
   token: string,
   input: {
@@ -53,8 +70,8 @@ async function createStagingProject(
   });
 
   if (!res.ok) {
-    const err = await res.text().catch(() => res.statusText);
-    throw new Error(`Failed to create project: ${err}`);
+    const text = await res.text().catch(() => res.statusText);
+    throw new ApiError(parseTrpcErrorBody(text, `요청 실패 (${res.status})`), res.status);
   }
 
   const json = await res.json();
@@ -146,6 +163,10 @@ export default function HomefixSetupPage() {
       setProjectId(project.id);
       setStep(2);
     } catch (e) {
+      if (e instanceof ApiError && e.status === 401) {
+        router.push("/auth");
+        return;
+      }
       setError(e instanceof Error ? e.message : "저장에 실패했습니다.");
     } finally {
       setSaving(false);
@@ -163,8 +184,8 @@ export default function HomefixSetupPage() {
         body: JSON.stringify({ project_id: projectId, camera_preset: camera }),
       });
       if (!res.ok) {
-        const msg = await res.text().catch(() => res.statusText);
-        throw new Error(msg);
+        const text = await res.text().catch(() => res.statusText);
+        throw new ApiError(parseTrpcErrorBody(text, `렌더링 요청 실패 (${res.status})`), res.status);
       }
       const data = await res.json();
       const result = data.result?.data?.json ?? data.result?.data ?? data;
@@ -176,6 +197,10 @@ export default function HomefixSetupPage() {
         router.push("/homefix");
       }
     } catch (e) {
+      if (e instanceof ApiError && e.status === 401) {
+        router.push("/auth");
+        return;
+      }
       setError(e instanceof Error ? e.message : "렌더링 요청에 실패했습니다.");
       setRendering(false);
     }
