@@ -65,6 +65,7 @@ export const homefixStagingRouter = router({
         room_height_mm: z.number().int().positive().default(2400),
         l_width_mm:     z.number().int().positive().optional(),
         l_depth_mm:     z.number().int().positive().optional(),
+        room_polygon:   z.array(z.object({ x_mm: z.number(), y_mm: z.number() })).min(3).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -79,6 +80,7 @@ export const homefixStagingRouter = router({
           room_height_mm: input.room_height_mm,
           l_width_mm:     input.l_width_mm ?? null,
           l_depth_mm:     input.l_depth_mm ?? null,
+          room_polygon:   input.room_polygon ? (input.room_polygon as Json) : null,
           status:         "draft",
         })
         .select("*")
@@ -162,14 +164,16 @@ export const homefixStagingRouter = router({
         room_height_mm: z.number().int().positive().optional(),
         l_width_mm:     z.number().int().positive().nullable().optional(),
         l_depth_mm:     z.number().int().positive().nullable().optional(),
+        room_polygon:   z.array(z.object({ x_mm: z.number(), y_mm: z.number() })).min(3).nullable().optional(),
         session_data:   z.record(z.unknown()).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const { id, session_data, ...rest } = input;
+      const { id, session_data, room_polygon, ...rest } = input;
       const fields = {
         ...rest,
         ...(session_data !== undefined ? { session_data: session_data as Json } : {}),
+        ...(room_polygon !== undefined ? { room_polygon: room_polygon as Json | null } : {}),
       };
 
       const { data, error } = await ctx.supabase
@@ -352,7 +356,7 @@ export const homefixStagingRouter = router({
       const [projectRes, candidateRes, placementsRes] = await Promise.all([
         ctx.supabase
           .from("homefix_staging_projects")
-          .select("id, room_width_mm, room_depth_mm, l_width_mm, l_depth_mm")
+          .select("id, room_width_mm, room_depth_mm, l_width_mm, l_depth_mm, room_polygon")
           .eq("id", input.project_id)
           .eq("user_id", ctx.user.id)
           .single(),
@@ -381,7 +385,10 @@ export const homefixStagingRouter = router({
       }
       const candidateCategory = normalizeFurnitureCategory(candidateRes.data.category);
 
-      const polygon = projectPolygon(projectRes.data);
+      const storedPolygon = projectRes.data.room_polygon as { x_mm: number; y_mm: number }[] | null;
+      const polygon: Vec2[] = storedPolygon && storedPolygon.length >= 3
+        ? storedPolygon
+        : projectPolygon(projectRes.data);
 
       // Fetch dimensions for every distinct furniture item already placed.
       const placedRows = placementsRes.data ?? [];
@@ -421,12 +428,12 @@ export const homefixStagingRouter = router({
       };
 
       console.info(
-        "[autoPlace] input project_id=%s furniture_id=%s room=%dx%d l_shape=%s existing=%d candidate=%s/%dx%d k=%d clearance_mm=%d rotation_deg=%s exclude_placement_id=%s",
+        "[autoPlace] input project_id=%s furniture_id=%s room=%dx%d polygon=%s existing=%d candidate=%s/%dx%d k=%d clearance_mm=%d rotation_deg=%s exclude_placement_id=%s",
         input.project_id,
         input.furniture_id,
         projectRes.data.room_width_mm,
         projectRes.data.room_depth_mm,
-        projectRes.data.l_width_mm ? `${projectRes.data.l_width_mm}x${projectRes.data.l_depth_mm}` : "none",
+        storedPolygon ? `custom(${storedPolygon.length}pts)` : (projectRes.data.l_width_mm ? `l-shape(${projectRes.data.l_width_mm}x${projectRes.data.l_depth_mm})` : "rect"),
         existing.length,
         candidate.category,
         candidate.width_mm,

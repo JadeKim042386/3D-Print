@@ -765,6 +765,7 @@ export type Database = {
           room_height_mm: number
           l_width_mm: number | null
           l_depth_mm: number | null
+          room_polygon: Json | null
           session_data: Json
           status: string
           render_url: string | null
@@ -783,6 +784,7 @@ export type Database = {
           room_height_mm?: number
           l_width_mm?: number | null
           l_depth_mm?: number | null
+          room_polygon?: Json | null
           session_data?: Json
           status?: string
           render_url?: string | null
@@ -801,6 +803,7 @@ export type Database = {
           room_height_mm?: number
           l_width_mm?: number | null
           l_depth_mm?: number | null
+          room_polygon?: Json | null
           session_data?: Json
           status?: string
           render_url?: string | null
