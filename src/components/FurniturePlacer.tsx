@@ -299,8 +299,6 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
     curYmm: number;
     hasMoved: boolean;
   } | null>(null);
-  // Suppresses the SVG onClick deselect that fires after a drag gesture ends
-  const suppressNextClick = useRef(false);
 
   const { scale, ox, oy } = computeTransform(dims);
   const polygonStr = buildPolygonStr(dims, scale, ox, oy);
@@ -468,23 +466,13 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
 
   const onItemPointerDown = (e: React.PointerEvent, placementId: string) => {
     e.stopPropagation();
-    // Do NOT call e.preventDefault() here — it cancels the synthetic click event
-    // on desktop browsers, making suppressNextClick unreliable. The SVG's
-    // touch-action:none / user-select:none classes already prevent scroll and
-    // text-selection side-effects without suppressing click generation.
-
-    // Set selection and suppress the follow-up SVG onClick *before* any code
-    // that could throw — so selection always takes effect even if the drag
-    // setup below fails (e.g. when a newly-placed item isn't in the placements
-    // closure yet due to a stale-ref edge case).
+    // Set selection before anything that could throw — guarantees selection
+    // even when drag setup fails (e.g. stale placements closure for new item).
     setSelectedId(placementId);
-    suppressNextClick.current = true;
 
     const { x, y } = getSvgXY(e);
     const p = placements.find((pl) => pl.id === placementId);
     if (!p) {
-      // Safety: item not found — selection is already set; just capture so the
-      // follow-up pointerup/click go to the SVG and are handled correctly.
       svgRef.current?.setPointerCapture(e.pointerId);
       return;
     }
@@ -531,12 +519,6 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
     if (!dragRef.current) return;
     const { placementId, curXmm, curYmm, hasMoved } = dragRef.current;
     dragRef.current = null;
-    // Pointer capture is on the SVG, so the synthesized click after pointer-up
-    // also fires on the SVG (not the inner <g>). Without this flag the SVG
-    // onClick would call setSelectedId(null) and immediately deselect the
-    // item we just picked, hiding the rotate/delete bar.
-    suppressNextClick.current = true;
-    // Only persist to backend if the item actually moved
     if (!hasMoved) return;
     await trpcMutation(
       "homefix.staging.updatePlacement",
@@ -681,13 +663,7 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
             onPointerMove={onSvgPointerMove}
             onPointerUp={onSvgPointerUp}
             onPointerCancel={onSvgPointerUp}
-            onClick={() => {
-              if (suppressNextClick.current) {
-                suppressNextClick.current = false;
-                return;
-              }
-              setSelectedId(null);
-            }}
+            onPointerDown={() => setSelectedId(null)}
           >
             <defs>
               <pattern id="fp-dots" width="12" height="12" patternUnits="userSpaceOnUse">
@@ -723,7 +699,6 @@ export default function FurniturePlacer({ projectId, dims, token }: FurniturePla
                   transform={`rotate(${p.rotation_deg}, ${cx.toFixed(1)}, ${cy.toFixed(1)})`}
                   style={{ cursor: "move" }}
                   onPointerDown={(e) => onItemPointerDown(e, p.id)}
-                  onClick={(e) => e.stopPropagation()}
                 >
                   <rect
                     x={px}
