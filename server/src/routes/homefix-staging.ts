@@ -339,10 +339,12 @@ export const homefixStagingRouter = router({
   autoPlace: protectedProcedure
     .input(
       z.object({
-        project_id:   z.string().uuid(),
-        furniture_id: z.string().uuid(),
-        k:            z.number().int().min(1).max(10).default(3),
-        clearance_mm: z.number().int().min(0).max(500).default(50),
+        project_id:           z.string().uuid(),
+        furniture_id:         z.string().uuid(),
+        k:                    z.number().int().min(1).max(10).default(3),
+        clearance_mm:         z.number().int().min(0).max(500).default(50),
+        rotation_deg:         z.number().min(0).max(359.99).optional(),
+        exclude_placement_id: z.string().uuid().optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -359,10 +361,16 @@ export const homefixStagingRouter = router({
           .select("id, category, width_mm, depth_mm, height_mm")
           .eq("id", input.furniture_id)
           .single(),
-        ctx.supabase
-          .from("homefix_placements")
-          .select("furniture_id, x_mm, y_mm, rotation_deg")
-          .eq("project_id", input.project_id),
+        (() => {
+          let q = ctx.supabase
+            .from("homefix_placements")
+            .select("furniture_id, x_mm, y_mm, rotation_deg")
+            .eq("project_id", input.project_id);
+          if (input.exclude_placement_id) {
+            q = q.neq("id", input.exclude_placement_id);
+          }
+          return q;
+        })(),
       ]);
 
       if (projectRes.error || !projectRes.data) {
@@ -413,7 +421,7 @@ export const homefixStagingRouter = router({
       };
 
       console.info(
-        "[autoPlace] input project_id=%s furniture_id=%s room=%dx%d l_shape=%s existing=%d candidate=%s/%dx%d k=%d clearance_mm=%d",
+        "[autoPlace] input project_id=%s furniture_id=%s room=%dx%d l_shape=%s existing=%d candidate=%s/%dx%d k=%d clearance_mm=%d rotation_deg=%s exclude_placement_id=%s",
         input.project_id,
         input.furniture_id,
         projectRes.data.room_width_mm,
@@ -425,6 +433,8 @@ export const homefixStagingRouter = router({
         candidate.depth_mm,
         input.k,
         input.clearance_mm,
+        input.rotation_deg ?? "auto",
+        input.exclude_placement_id ?? "none",
       );
 
       const result = autoPlace({
@@ -433,6 +443,7 @@ export const homefixStagingRouter = router({
         candidate,
         k: input.k,
         clearanceMm: input.clearance_mm,
+        rotationDeg: input.rotation_deg,
       });
 
       console.info(

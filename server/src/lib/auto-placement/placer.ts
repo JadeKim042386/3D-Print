@@ -35,6 +35,8 @@ export interface AutoPlaceInput {
   };
   k?: number;
   clearanceMm?: number;
+  /** When set, only generate poses at this exact rotation (degrees). */
+  rotationDeg?: number;
 }
 
 export interface PlacementSuggestion extends ScoredPose {}
@@ -60,7 +62,7 @@ export function autoPlace(input: AutoPlaceInput): AutoPlaceOutput {
   if (walls.length === 0) return emptyResult();
 
   const ctx = buildContext(poly, walls, input.candidate, input.existing);
-  const candidates = generatePoses(input.candidate, walls, poly);
+  const candidates = generatePoses(input.candidate, walls, poly, input.rotationDeg);
 
   const filtered: ScoredPose[] = [];
   for (const pose of candidates) {
@@ -147,6 +149,7 @@ function generatePoses(
   candidate: AutoPlaceInput["candidate"],
   walls: ReturnType<typeof polygonWalls>,
   poly: Vec2[],
+  rotationDeg?: number,
 ): CandidatePose[] {
   const rule = ruleFor(candidate.category);
   const poses: CandidatePose[] = [];
@@ -170,6 +173,8 @@ function generatePoses(
       // -sin(angle) = nx; cos(angle) = ny  ⇒ angle = atan2(-nx, ny)
       const angleDeg = ((Math.atan2(-nx, ny) * 180) / Math.PI + 360) % 360;
       const snapped = snapTo90(angleDeg);
+      // Skip this wall if a fixed rotation is requested and it doesn't match.
+      if (rotationDeg !== undefined && snapped !== rotationDeg) continue;
       const halfW = candidate.width_mm / 2;
       const halfD = candidate.depth_mm / 2;
       const insetMin = halfW + 50;
@@ -186,13 +191,14 @@ function generatePoses(
     }
   }
 
-  // 2) Grid sampling × 4 rotations
+  // 2) Grid sampling — use fixed rotation if requested, otherwise all 4 rotations.
+  const rotations = rotationDeg !== undefined ? [rotationDeg] : ROTATIONS;
   const aabb = polygonAabb(poly);
   const stepX = Math.max(300, candidate.width_mm / 2);
   const stepY = Math.max(300, candidate.depth_mm / 2);
   for (let x = aabb.minX + stepX / 2; x <= aabb.maxX; x += stepX) {
     for (let y = aabb.minY + stepY / 2; y <= aabb.maxY; y += stepY) {
-      for (const r of ROTATIONS) {
+      for (const r of rotations) {
         poses.push({ x_mm: x, y_mm: y, rotation_deg: r });
       }
     }

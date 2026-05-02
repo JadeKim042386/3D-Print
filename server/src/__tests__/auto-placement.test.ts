@@ -440,6 +440,47 @@ describe("normalizeFurnitureCategory (DPR-95)", () => {
   });
 });
 
+// ─── DPR-183: rotation_deg + exclude logic ────────────────────────────────────
+describe("DPR-183 — rotationDeg constraint", () => {
+  it("all returned poses use the fixed rotation_deg when specified", () => {
+    const result = autoPlace({
+      roomPolygon: rectRoom(4000, 5000),
+      existing: [],
+      candidate: { width_mm: 1400, depth_mm: 700, height_mm: 750, category: "책상" },
+      k: 3,
+      rotationDeg: 90,
+    });
+    expect(result.best).not.toBeNull();
+    expect(result.best!.rotation_deg).toBe(90);
+    for (const alt of result.alternatives) {
+      expect(alt.rotation_deg).toBe(90);
+    }
+  });
+
+  it("omitting rotation_deg preserves existing multi-rotation behavior", () => {
+    const result = autoPlace({
+      roomPolygon: rectRoom(4000, 5000),
+      existing: [],
+      candidate: { width_mm: 1400, depth_mm: 700, height_mm: 750, category: "책상" },
+      k: 3,
+    });
+    expect(result.best).not.toBeNull();
+    // With multiple rotations available, we should get some alternatives
+    expect(result.alternatives.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("returns null best when the fixed rotation cannot fit the furniture", () => {
+    // A 3000mm-wide sofa at rotation 0 cannot fit in a 2500mm room width
+    const result = autoPlace({
+      roomPolygon: rectRoom(2500, 4000),
+      existing: [],
+      candidate: { width_mm: 3000, depth_mm: 900, height_mm: 850, category: "소파" },
+      rotationDeg: 0,
+    });
+    expect(result.best).toBeNull();
+  });
+});
+
 // ─── Regression: DPR-95 — autoPlace must return integer x_mm/y_mm ─────────────
 //
 // addFurniture's Zod schema uses `z.number().int()` for x_mm/y_mm. Pose
