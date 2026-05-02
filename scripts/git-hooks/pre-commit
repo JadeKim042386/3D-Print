@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# DPR-179 — block commits that touch homefix-shaped paths.
+# Prod homefix-web.vercel.app deploys from the standalone repo
+# JadeKim042386/homefix.git, NOT from this 3D-Print monorepo. Commits to
+# src/app/homefix/* etc. land but never reach prod. Port them to:
+#   /Users/joo/.paperclip/instances/default/projects/dd04157d-4d28-46ff-826c-c3470e82efb0/ac05affd-65ec-4fa5-8bc4-d6a75a4d552d/homefix
+# See AGENTS.md for path mapping.
+#
+# Install (one-time, per clone):
+#   git config core.hooksPath scripts/git-hooks
+#
+# Bypass (only when intentionally committing these paths to 3D-Print):
+#   ALLOW_HOMEFIX_COMMIT=1 git commit ...
+
+set -e
+
+if [ "${ALLOW_HOMEFIX_COMMIT:-0}" = "1" ]; then
+  exit 0
+fi
+
+blocked=$(git diff --cached --name-only --diff-filter=ACMR \
+  | grep -E '^(src/app/homefix/|src/components/(FurniturePlacer|RoomLayoutEditor|RoomSetupEditor)|src/lib/homefix|public/homefix)' \
+  || true)
+
+if [ -n "$blocked" ]; then
+  {
+    echo "✘ pre-commit blocked: homefix-shaped paths must NOT be committed to 3D-Print."
+    echo
+    echo "  Prod homefix-web.vercel.app deploys from JadeKim042386/homefix.git."
+    echo "  Commits here do not reach prod. See AGENTS.md."
+    echo
+    echo "Blocked files:"
+    echo "$blocked"
+    echo
+    echo "Port the change to the standalone homefix workspace:"
+    echo "  cd /Users/joo/.paperclip/instances/default/projects/dd04157d-4d28-46ff-826c-c3470e82efb0/ac05affd-65ec-4fa5-8bc4-d6a75a4d552d/homefix"
+    echo
+    echo "Override (only if intentionally targeting 3D-Print):"
+    echo "  ALLOW_HOMEFIX_COMMIT=1 git commit ..."
+  } >&2
+  exit 1
+fi

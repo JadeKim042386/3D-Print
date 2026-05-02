@@ -1,3 +1,10 @@
+> **⚠️ HomeFix changes do NOT belong in this repo.**
+> Prod `homefix-web.vercel.app` deploys from the standalone repo
+> `https://github.com/JadeKim042386/homefix.git`. The `src/app/homefix/*`
+> subtree here is a stale mirror; commits land but never reach prod. See
+> [AGENTS.md](./AGENTS.md) for the homefix workspace path and porting rules.
+> A pre-commit hook in this repo will block commits that touch homefix paths.
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
