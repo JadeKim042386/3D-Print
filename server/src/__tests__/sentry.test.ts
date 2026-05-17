@@ -19,6 +19,8 @@ function makeConfig(overrides: Partial<Config> = {}): Config {
     MESHY_API_KEY: "meshy-key",
     STORAGE_BUCKET: "models",
     PORT: 3000,
+    RENDER_PROVIDER: "meshy",
+    RENDER_QUALITY: "preview",
     KAKAOPAY_CID: "TC0ONETIME",
     POSTHOG_HOST: "https://us.i.posthog.com",
     SENTRY_ENVIRONMENT: "test",

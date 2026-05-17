@@ -4,6 +4,7 @@ import { initSentry } from "./lib/sentry.js";
 import { getSupabaseClient } from "./storage/supabase.js";
 import { MeshyProvider } from "./providers/meshy.js";
 import { MockGenerationProvider } from "./providers/mock-generation.js";
+import { BlenderProvider } from "./providers/blender.js";
 import { createGenerationWorker } from "./queue/generation-worker.js";
 import { createPrintReadinessQueue } from "./queue/print-readiness-queue.js";
 import { createMailer } from "./lib/mailer.js";
@@ -35,6 +36,16 @@ async function main() {
   const creditResetQueue = createCreditResetQueue(redis);
   const mailer = createMailer(config);
 
+  // DPR-247 / DPR-248 — when RENDER_PROVIDER=blender, route homefix-render
+  // jobs through the in-house Celery worker fleet. Requires CELERY_BROKER_URL
+  // pointing at the same Redis instance the Python worker consumes from.
+  let blenderProvider: BlenderProvider | undefined;
+  if (config.RENDER_PROVIDER === "blender") {
+    const celeryUrl = config.CELERY_BROKER_URL ?? config.REDIS_URL;
+    blenderProvider = new BlenderProvider({ supabase, celeryBrokerUrl: celeryUrl });
+    console.log(`BlenderProvider enabled (quality=${config.RENDER_QUALITY}, broker=${celeryUrl.replace(/\/\/[^@]*@/, "//<redacted>@")})`);
+  }
+
   const generationWorker = createGenerationWorker({
     connection: redis,
     provider,
@@ -42,6 +53,7 @@ async function main() {
     bucket: config.STORAGE_BUCKET,
     printReadinessQueue,
     mailer,
+    blenderProvider,
   });
 
   const creditResetWorker = createCreditResetWorker({

@@ -8,6 +8,13 @@ const envSchema = z.object({
   MESHY_API_KEY: z.string().optional(),
   STORAGE_BUCKET: z.string().default("models"),
   PORT: z.coerce.number().default(3000),
+  // DPR-247 / DPR-248 — Blender procedural rendering provider switch.
+  // `meshy` (default) keeps the legacy text-to-3D Meshy pipeline; `blender`
+  // routes homefix-render jobs to the in-house Celery worker fleet on
+  // `homefix-render-worker` (queues: homefix-render-fast / homefix-render-slow).
+  RENDER_PROVIDER: z.enum(["meshy", "blender"]).default("meshy"),
+  RENDER_QUALITY: z.enum(["preview", "final"]).default("preview"),
+  CELERY_BROKER_URL: z.string().optional(),
   // Toss Payments (sandbox by default)
   TOSS_PAYMENTS_SECRET_KEY: z.string().optional(),
   TOSS_PAYMENTS_CLIENT_KEY: z.string().optional(),
