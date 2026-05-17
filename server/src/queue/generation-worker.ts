@@ -20,6 +20,7 @@ import {
 import type { Queue } from "bullmq";
 import type { PrintReadinessJobData, PrintReadinessJobResult } from "./print-readiness-queue.js";
 import type { Mailer } from "../lib/mailer.js";
+import type { BlenderProvider, BlenderQuality } from "../providers/blender.js";
 
 interface HomefixRenderJobData {
   homefixRenderJobId: string;
@@ -74,7 +75,35 @@ const HOMEFIX_NEGATIVE_PROMPT =
   "(floating objects), (unrealistic proportions), (distorted), (blurry), " +
   "(low quality), (watermark), (text), (oversaturated)";
 
+/**
+ * Resolve the render provider for the current job. Default `meshy` preserves
+ * the legacy path; set `RENDER_PROVIDER=blender` (DPR-247 / DPR-248) to route
+ * homefix-render jobs to the in-house Blender Celery worker fleet.
+ */
+function resolveRenderProvider(): "meshy" | "blender" {
+  const raw = (process.env.RENDER_PROVIDER ?? "meshy").toLowerCase();
+  return raw === "blender" ? "blender" : "meshy";
+}
+
+function resolveBlenderQuality(): BlenderQuality {
+  return (process.env.RENDER_QUALITY ?? "preview").toLowerCase() === "final" ? "final" : "preview";
+}
+
 async function handleHomefixRender(
+  deps: GenerationWorkerDeps,
+  job: Job<HomefixRenderJobData>
+): Promise<void> {
+  const renderProvider = resolveRenderProvider();
+  if (renderProvider === "blender") {
+    if (!deps.blenderProvider) {
+      throw new Error("RENDER_PROVIDER=blender but no BlenderProvider configured (set CELERY_BROKER_URL in worker env)");
+    }
+    return handleHomefixRenderViaBlender(deps, job);
+  }
+  return handleHomefixRenderViaMeshy(deps, job);
+}
+
+async function handleHomefixRenderViaMeshy(
   deps: GenerationWorkerDeps,
   job: Job<HomefixRenderJobData>
 ): Promise<void> {
@@ -123,6 +152,46 @@ async function handleHomefixRender(
   await job.updateProgress(100);
 }
 
+async function handleHomefixRenderViaBlender(
+  deps: GenerationWorkerDeps,
+  job: Job<HomefixRenderJobData>
+): Promise<void> {
+  const { supabase, blenderProvider } = deps;
+  if (!blenderProvider) throw new Error("blenderProvider missing");
+  const { homefixRenderJobId, projectId } = job.data;
+  const quality = resolveBlenderQuality();
+
+  await supabase.from("homefix_render_jobs").update({
+    status: "processing",
+    started_at: new Date().toISOString(),
+  }).eq("id", homefixRenderJobId);
+  await job.updateProgress(10);
+
+  const { celeryTaskId, queue, taskName } = await blenderProvider.enqueue({
+    homefixRenderJobId,
+    quality,
+  });
+  await supabase.from("homefix_render_jobs").update({
+    provider_task_id: celeryTaskId,
+  }).eq("id", homefixRenderJobId);
+  console.log(`[homefix-render] blender enqueue: job=${homefixRenderJobId} celery=${celeryTaskId} queue=${queue} task=${taskName} quality=${quality}`);
+  await job.updateProgress(20);
+
+  // Celery worker performs the render and writes result_url + status='completed'
+  // directly to the row. We just propagate completion to the staging project.
+  const result = await blenderProvider.waitForCompletion(homefixRenderJobId, {
+    pollIntervalMs: 5000,
+    timeoutMs: 600_000,
+  });
+
+  if (result.status === "failed") {
+    throw new Error(result.errorMessage ?? "Blender render failed");
+  }
+
+  await supabase.from("homefix_staging_projects").update({ status: "rendered" }).eq("id", projectId);
+  await job.updateProgress(100);
+}
+
 export interface GenerationWorkerDeps {
   connection: ConnectionOptions;
   provider: GenerationProvider;
@@ -132,6 +201,11 @@ export interface GenerationWorkerDeps {
   printReadinessQueue?: Queue<PrintReadinessJobData, PrintReadinessJobResult>;
   /** Optional: send transactional emails */
   mailer?: Mailer | null;
+  /**
+   * Optional: when `RENDER_PROVIDER=blender`, homefix-render jobs are routed
+   * to the in-house Blender Celery worker fleet via this provider.
+   */
+  blenderProvider?: BlenderProvider;
 }
 
 export function createGenerationWorker(
