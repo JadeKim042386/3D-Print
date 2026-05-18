@@ -1,5 +1,10 @@
 name: CI
 
+# NOTE (DPR-250, 2026-05-18): server/ canonical source has moved to homefix.git/server/.
+# All deploy jobs (deploy-api, deploy-worker, deploy-frontend) are disabled here so
+# commits to this repo no longer deploy to prod. CI is retained as a sanity check only.
+# See: https://github.com/JadeKim042386/homefix/tree/main/server
+
 on:
   pull_request:
     branches: [main]
@@ -8,7 +13,7 @@ on:
 
 jobs:
   ci-server:
-    name: Server CI
+    name: Server CI (read-only — canonical at homefix.git/server)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -52,94 +57,5 @@ jobs:
       - name: Build
         run: npm run build
 
-  deploy-api:
-    name: Deploy API to Fly.io
-    needs: ci-server
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: server
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: superfly/flyctl-actions/setup-flyctl@master
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: server/package-lock.json
-
-      - run: npm ci
-
-      - name: Build with source maps
-        run: npm run build
-
-      - name: Upload source maps to Sentry
-        if: env.SENTRY_AUTH_TOKEN != ''
-        run: npx @sentry/cli sourcemaps upload --org $SENTRY_ORG --project $SENTRY_PROJECT_BACKEND ./dist
-        env:
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
-          SENTRY_PROJECT_BACKEND: ${{ secrets.SENTRY_PROJECT_BACKEND }}
-
-      - name: Deploy API
-        run: flyctl deploy --config fly.toml --remote-only
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-
-  deploy-worker:
-    name: Deploy Worker to Fly.io
-    needs: ci-server
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: server
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: superfly/flyctl-actions/setup-flyctl@master
-
-      - name: Deploy Worker
-        run: flyctl deploy --config fly.worker.toml --remote-only
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-
-  deploy-frontend:
-    name: Deploy Frontend to Vercel
-    needs: ci-frontend
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: package-lock.json
-
-      - run: npm ci
-
-      - name: Build
-        run: npm run build
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
-          NEXT_PUBLIC_TOSS_CLIENT_KEY: ${{ secrets.NEXT_PUBLIC_TOSS_CLIENT_KEY }}
-          NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
-          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT_FRONTEND }}
-
-      - name: Deploy to Vercel
-        run: npx vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+  # Deploy jobs intentionally removed — see DPR-250. Canonical deploys now run from
+  # https://github.com/JadeKim042386/homefix/.github/workflows/server-ci.yml
